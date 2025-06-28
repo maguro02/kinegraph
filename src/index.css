@@ -1,0 +1,187 @@
+@import "tailwindcss";
+
+@theme {
+  /* カスタムカラーパレット */
+  --color-primary-50: #f0f9ff;
+  --color-primary-100: #e0f2fe;
+  --color-primary-200: #bae6fd;
+  --color-primary-300: #7dd3fc;
+  --color-primary-400: #38bdf8;
+  --color-primary-500: #0ea5e9;
+  --color-primary-600: #0284c7;
+  --color-primary-700: #0369a1;
+  --color-primary-800: #075985;
+  --color-primary-900: #0c4a6e;
+
+  --color-secondary-50: #f8fafc;
+  --color-secondary-100: #f1f5f9;
+  --color-secondary-200: #e2e8f0;
+  --color-secondary-300: #cbd5e1;
+  --color-secondary-400: #94a3b8;
+  --color-secondary-500: #64748b;
+  --color-secondary-600: #475569;
+  --color-secondary-700: #334155;
+  --color-secondary-800: #1e293b;
+  --color-secondary-900: #0f172a;
+
+  --color-canvas-50: #ffffff;
+  --color-canvas-100: #f9fafb;
+  --color-canvas-200: #f3f4f6;
+  --color-canvas-300: #e5e7eb;
+  --color-canvas-400: #d1d5db;
+  --color-canvas-500: #9ca3af;
+  --color-canvas-600: #6b7280;
+  --color-canvas-700: #374151;
+  --color-canvas-800: #1f2937;
+  --color-canvas-900: #111827;
+
+  /* フォントファミリー */
+  --font-family-sans: 'Inter', system-ui, sans-serif;
+  --font-family-mono: 'JetBrains Mono', monospace;
+
+  /* カスタムスペーシング */
+  --spacing-18: 4.5rem;
+  --spacing-72: 18rem;
+  --spacing-84: 21rem;
+  --spacing-96: 24rem;
+
+  /* アニメーション */
+  --animate-fade-in: fadeIn 0.2s ease-in-out;
+  --animate-slide-up: slideUp 0.3s ease-out;
+  --animate-scale-in: scaleIn 0.2s ease-out;
+
+  @keyframes fadeIn {
+    0% { opacity: 0; }
+    100% { opacity: 1; }
+  }
+
+  @keyframes slideUp {
+    0% { transform: translateY(10px); opacity: 0; }
+    100% { transform: translateY(0); opacity: 1; }
+  }
+
+  @keyframes scaleIn {
+    0% { transform: scale(0.95); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+}
+
+@layer base {
+  html {
+    font-family: var(--font-family-sans);
+  }
+  
+  body {
+    margin: 0;
+    padding: 0;
+    font-family: var(--font-family-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    background-color: var(--color-secondary-900);
+    color: var(--color-secondary-100);
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+}
+
+@layer components {
+  /* ボタンコンポーネント */
+  .btn {
+    @apply px-4 py-2 rounded-lg font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2;
+  }
+  
+  .btn-primary {
+    @apply bg-primary-600 text-white hover:bg-primary-700 focus:ring-primary-500;
+  }
+  
+  .btn-secondary {
+    @apply bg-secondary-600 text-white hover:bg-secondary-700 focus:ring-secondary-500;
+  }
+  
+  .btn-ghost {
+    @apply bg-transparent text-secondary-300 hover:bg-secondary-800 hover:text-secondary-100 focus:ring-secondary-500;
+  }
+  
+  .btn-icon {
+    @apply p-2 rounded-lg bg-secondary-800 text-secondary-300 hover:bg-secondary-700 hover:text-secondary-100 transition-colors;
+  }
+
+  /* パネルコンポーネント */
+  .panel {
+    @apply bg-secondary-800 border border-secondary-700 rounded-lg shadow-lg;
+  }
+  
+  .panel-header {
+    @apply px-4 py-3 border-b border-secondary-700 bg-secondary-800 rounded-t-lg;
+  }
+  
+  .panel-content {
+    @apply p-4;
+  }
+
+  /* ツールバー */
+  .toolbar {
+    @apply flex items-center gap-2 p-2 bg-secondary-800 border-b border-secondary-700;
+  }
+  
+  .toolbar-group {
+    @apply flex items-center gap-1 px-2 py-1 bg-secondary-700 rounded-lg;
+  }
+
+  /* キャンバス関連 */
+  .canvas-container {
+    @apply flex-1 bg-canvas-900 overflow-hidden relative;
+  }
+  
+  .canvas-grid {
+    background-image: 
+      linear-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.1) 1px, transparent 1px);
+    background-size: 20px 20px;
+  }
+
+  /* レイヤーパネル */
+  .layer-item {
+    @apply flex items-center gap-3 p-3 border-b border-secondary-700 hover:bg-secondary-700 cursor-pointer transition-colors;
+  }
+  
+  .layer-item.selected {
+    @apply bg-primary-900 border-primary-700;
+  }
+
+  /* フレームタイムライン */
+  .frame-item {
+    @apply w-16 h-12 border border-secondary-600 bg-secondary-800 hover:bg-secondary-700 cursor-pointer transition-colors relative;
+  }
+  
+  .frame-item.current {
+    @apply border-primary-500 bg-primary-900;
+  }
+  
+  .frame-thumbnail {
+    @apply w-full h-full object-cover rounded-sm;
+  }
+}
+
+@layer utilities {
+  .text-shadow {
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  }
+  
+  .drag-handle {
+    cursor: grab;
+  }
+  
+  .drag-handle:active {
+    cursor: grabbing;
+  }
+  
+  .no-select {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+  }
+}

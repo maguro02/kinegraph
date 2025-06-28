@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kinegraph - create_project Manual Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        
+        .test-section {
+            margin-bottom: 30px;
+            border: 1px solid #e0e0e0;
+            padding: 15px;
+            border-radius: 4px;
+        }
+        
+        .test-section h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        
+        button {
+            background: #007acc;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        
+        button:hover {
+            background: #005999;
+        }
+        
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .error-button {
+            background: #dc3545;
+        }
+        
+        .error-button:hover {
+            background: #c82333;
+        }
+        
+        .log-output {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 10px;
+            margin-top: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .log-entry {
+            margin: 2px 0;
+            padding: 2px 0;
+        }
+        
+        .log-info { color: #007acc; }
+        .log-error { color: #dc3545; font-weight: bold; }
+        .log-debug { color: #6c757d; }
+        .log-warn { color: #fd7e14; }
+        
+        input, select {
+            margin: 5px;
+            padding: 5px;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+        }
+        
+        .input-group {
+            margin: 10px 0;
+        }
+        
+        .input-group label {
+            display: inline-block;
+            width: 100px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Kinegraph - create_project Manual Test</h1>
+        <p>この画面でcreate_project APIの各種エラーシナリオをテストできます。<br>
+        開発者ツール（F12）のコンソールタブを開いて、詳細なログを確認してください。</p>
+
+        <!-- 正常ケース -->
+        <div class="test-section">
+            <h3>✅ 正常ケーステスト</h3>
+            <div class="input-group">
+                <label>プロジェクト名:</label>
+                <input type="text" id="normalName" value="Test Project" />
+            </div>
+            <div class="input-group">
+                <label>幅:</label>
+                <input type="number" id="normalWidth" value="1920" />
+                <label>高さ:</label>
+                <input type="number" id="normalHeight" value="1080" />
+                <label>FPS:</label>
+                <input type="number" id="normalFps" value="24" />
+            </div>
+            <button onclick="testNormalCase()">正常なプロジェクト作成</button>
+        </div>
+
+        <!-- 無効パラメータエラー -->
+        <div class="test-section">
+            <h3>❌ 無効パラメータエラーテスト</h3>
+            <button class="error-button" onclick="testEmptyName()">空文字名エラー</button>
+            <button class="error-button" onclick="testNegativeWidth()">負の幅エラー</button>
+            <button class="error-button" onclick="testZeroHeight()">ゼロ高さエラー</button>
+            <button class="error-button" onclick="testInvalidFrameRate()">無効FPSエラー</button>
+            <button class="error-button" onclick="testOversizedCanvas()">巨大キャンバスエラー</button>
+        </div>
+
+        <!-- 複数回呼び出しテスト -->
+        <div class="test-section">
+            <h3>🔄 複数回呼び出しテスト</h3>
+            <button onclick="testConcurrentCalls()">同時複数呼び出し</button>
+            <button onclick="testRapidCalls()">高速連続呼び出し</button>
+            <button onclick="testBulkCalls()">大量並列呼び出し</button>
+        </div>
+
+        <!-- バックエンドエラー -->
+        <div class="test-section">
+            <h3>⚠️ バックエンドエラーテスト</h3>
+            <button class="error-button" onclick="testBackendNotReady()">未初期化エラー</button>
+            <button class="error-button" onclick="testIPCError()">IPC通信エラー</button>
+            <button class="error-button" onclick="testTimeoutError()">タイムアウトエラー</button>
+        </div>
+
+        <!-- システム情報テスト -->
+        <div class="test-section">
+            <h3>🔧 システム情報テスト</h3>
+            <button onclick="testSystemInfo()">システム情報取得</button>
+            <button onclick="testDebugInit()">デバッグログ初期化</button>
+        </div>
+
+        <!-- パフォーマンステスト -->
+        <div class="test-section">
+            <h3>⚡ パフォーマンステスト</h3>
+            <button onclick="testLargeProject()">大型プロジェクト作成</button>
+            <button onclick="testMemoryStress()">メモリストレステスト</button>
+        </div>
+
+        <!-- ログ出力エリア -->
+        <div class="test-section">
+            <h3>📋 ログ出力</h3>
+            <button onclick="clearLogs()">ログクリア</button>
+            <div id="logOutput" class="log-output"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        // Tauri APIの動的インポート（開発時のみ利用可能）
+        let tauriAPI = null;
+        
+        try {
+            // 本来のTauri環境でのみ動作
+            tauriAPI = await import('/src/lib/tauri.ts');
+        } catch (error) {
+            console.warn('Tauri API not available in this environment:', error);
+        }
+
+        // ログ出力関数
+        function addLog(level, message, data = '') {
+            const logOutput = document.getElementById('logOutput');
+            const timestamp = new Date().toISOString();
+            const logEntry = document.createElement('div');
+            logEntry.className = `log-entry log-${level}`;
+            
+            let logText = `[${timestamp}] [${level.toUpperCase()}] ${message}`;
+            if (data && typeof data === 'object') {
+                logText += ` ${JSON.stringify(data, null, 2)}`;
+            } else if (data) {
+                logText += ` ${data}`;
+            }
+            
+            logEntry.textContent = logText;
+            logOutput.appendChild(logEntry);
+            logOutput.scrollTop = logOutput.scrollHeight;
+            
+            // コンソールにも出力
+            console[level](logText);
+        }
+
+        // モック関数（Tauri環境外での動作用）
+        function createMockProject(name, width, height, frameRate) {
+            return new Promise((resolve, reject) => {
+                setTimeout(() => {
+                    // エラーシナリオの模擬
+                    if (!name) {
+                        reject(new Error('Project name cannot be empty'));
+                    } else if (width <= 0) {
+                        reject(new Error('Width must be positive'));
+                    } else if (height <= 0) {
+                        reject(new Error('Height must be positive'));
+                    } else if (frameRate <= 0 || frameRate > 120) {
+                        reject(new Error('Frame rate must be between 1 and 120'));
+                    } else if (width > 8192 || height > 8192) {
+                        reject(new Error('Canvas size exceeds maximum allowed dimensions'));
+                    } else {
+                        resolve({
+                            id: `mock-project-${Date.now()}`,
+                            name,
+                            width,
+                            height,
+                            frameRate,
+                            frames: [],
+                            createdAt: new Date().toISOString()
+                        });
+                    }
+                }, Math.random() * 1000 + 500); // 500-1500ms のランダム遅延
+            });
+        }
+
+        // テスト関数群
+        window.testNormalCase = async function() {
+            const name = document.getElementById('normalName').value;
+            const width = parseInt(document.getElementById('normalWidth').value);
+            const height = parseInt(document.getElementById('normalHeight').value);
+            const fps = parseInt(document.getElementById('normalFps').value);
+            
+            addLog('info', '正常ケーステスト開始', { name, width, height, fps });
+            
+            try {
+                let result;
+                if (tauriAPI) {
+                    result = await tauriAPI.createProject(name, width, height, fps);
+                } else {
+                    result = await createMockProject(name, width, height, fps);
+                }
+                addLog('info', 'プロジェクト作成成功', result);
+            } catch (error) {
+                addLog('error', 'プロジェクト作成エラー', error.message);
+            }
+        };
+
+        window.testEmptyName = async function() {
+            addLog('info', '空文字名エラーテスト開始');
+            try {
+                let result;
+                if (tauriAPI) {
+                    result = await tauriAPI.createProject('', 1920, 1080, 24);
+                } else {
+                    result = await createMockProject('', 1920, 1080, 24);
+                }
+            } catch (error) {
+                addLog('error', '期待されるエラーが発生', error.message);
+            }
+        };
+
+        window.testNegativeWidth = async function() {
+            addLog('info', '負の幅エラーテスト開始');
+            try {
+                let result;
+                if (tauriAPI) {
+                    result = await tauriAPI.createProject('Test', -100, 1080, 24);
+                } else {
+                    result = await createMockProject('Test', -100, 1080, 24);
+                }
+            } catch (error) {
+                addLog('error', '期待されるエラーが発生', error.message);
+            }
+        };
+
+        window.testZeroHeight = async function() {
+            addLog('info', 'ゼロ高さエラーテスト開始');
+            try {
+                let result;
+                if (tauriAPI) {
+                    result = await tauriAPI.createProject('Test', 1920, 0, 24);
+                } else {
+                    result = await createMockProject('Test', 1920, 0, 24);
+                }
+            } catch (error) {
+                addLog('error', '期待されるエラーが発生', error.message);
+            }
+        };
+
+        window.testInvalidFrameRate = async function() {
+            addLog('info', '無効FPSエラーテスト開始');
+            try {
+                let result;
+                if (tauriAPI) {
+                    result = await tauriAPI.createProject('Test', 1920, 1080, 0);
+                } else {
+                    result = await createMockProject('Test', 1920, 1080, 0);
+                }
+            } catch (error) {
+                addLog('error', '期待されるエラーが発生', error.message);
+            }
+        };
+
+        window.testOversizedCanvas = async function() {
+            addLog('info', '巨大キャンバスエラーテスト開始');
+            try {
+                let result;
+                if (tauriAPI) {
+                    result = await tauriAPI.createProject('Test', 50000, 50000, 24);
+                } else {
+                    result = await createMockProject('Test', 50000, 50000, 24);
+                }
+            } catch (error) {
+                addLog('error', '期待されるエラーが発生', error.message);
+            }
+        };
+
+        window.testConcurrentCalls = async function() {
+            addLog('info', '同時複数呼び出しテスト開始');
+            
+            const promises = [
+                tauriAPI ? 
+                    tauriAPI.createProject('Project 1', 1920, 1080, 24) : 
+                    createMockProject('Project 1', 1920, 1080, 24),
+                tauriAPI ? 
+                    tauriAPI.createProject('Project 2', 1920, 1080, 30) : 
+                    createMockProject('Project 2', 1920, 1080, 30),
+                tauriAPI ? 
+                    tauriAPI.createProject('Project 3', 1920, 1080, 60) : 
+                    createMockProject('Project 3', 1920, 1080, 60)
+            ];
+            
+            const results = await Promise.allSettled(promises);
+            results.forEach((result, index) => {
+                if (result.status === 'fulfilled') {
+                    addLog('info', `プロジェクト ${index + 1} 作成成功`, result.value);
+                } else {
+                    addLog('error', `プロジェクト ${index + 1} 作成失敗`, result.reason.message);
+                }
+            });
+        };
+
+        window.testRapidCalls = async function() {
+            addLog('info', '高速連続呼び出しテスト開始');
+            
+            for (let i = 0; i < 5; i++) {
+                try {
+                    let result;
+                    if (tauriAPI) {
+                        result = await tauriAPI.createProject(`Rapid ${i}`, 1920, 1080, 24);
+                    } else {
+                        result = await createMockProject(`Rapid ${i}`, 1920, 1080, 24);
+                    }
+                    addLog('info', `高速呼び出し ${i + 1} 成功`, result.id);
+                } catch (error) {
+                    addLog('error', `高速呼び出し ${i + 1} 失敗`, error.message);
+                }
+            }
+        };
+
+        window.testBulkCalls = async function() {
+            addLog('info', '大量並列呼び出しテスト開始（10個）');
+            
+            const promises = Array.from({ length: 10 }, (_, i) =>
+                tauriAPI ? 
+                    tauriAPI.createProject(`Bulk ${i}`, 1920, 1080, 24) : 
+                    createMockProject(`Bulk ${i}`, 1920, 1080, 24)
+            );
+            
+            const results = await Promise.allSettled(promises);
+            const successes = results.filter(r => r.status === 'fulfilled').length;
+            const failures = results.filter(r => r.status === 'rejected').length;
+            
+            addLog('info', `大量並列テスト結果: 成功 ${successes}件, 失敗 ${failures}件`);
+        };
+
+        window.testBackendNotReady = function() {
+            addLog('error', 'バックエンド未初期化エラー（模擬）', 'Tauri backend not initialized');
+        };
+
+        window.testIPCError = function() {
+            addLog('error', 'IPC通信エラー（模擬）', 'IPC channel disconnected');
+        };
+
+        window.testTimeoutError = function() {
+            addLog('error', 'タイムアウトエラー（模擬）', 'Operation timed out');
+        };
+
+        window.testSystemInfo = async function() {
+            addLog('info', 'システム情報取得テスト開始');
+            try {
+                if (tauriAPI) {
+                    const systemInfo = await tauriAPI.getSystemInfo();
+                    addLog('info', 'システム情報取得成功', systemInfo);
+                } else {
+                    addLog('info', 'システム情報取得成功（模擬）', 'Mock system info');
+                }
+            } catch (error) {
+                addLog('error', 'システム情報取得エラー', error.message);
+            }
+        };
+
+        window.testDebugInit = async function() {
+            addLog('info', 'デバッグログ初期化テスト開始');
+            try {
+                if (tauriAPI) {
+                    await tauriAPI.initializeDebugLogging();
+                    addLog('info', 'デバッグログ初期化完了');
+                } else {
+                    addLog('info', 'デバッグログ初期化完了（模擬）');
+                }
+            } catch (error) {
+                addLog('error', 'デバッグログ初期化エラー', error.message);
+            }
+        };
+
+        window.testLargeProject = async function() {
+            addLog('info', '大型プロジェクト作成テスト開始（4K解像度）');
+            try {
+                let result;
+                if (tauriAPI) {
+                    result = await tauriAPI.createProject('Large Project', 3840, 2160, 60);
+                } else {
+                    result = await createMockProject('Large Project', 3840, 2160, 60);
+                }
+                addLog('info', '大型プロジェクト作成成功', result);
+            } catch (error) {
+                addLog('error', '大型プロジェクト作成エラー', error.message);
+            }
+        };
+
+        window.testMemoryStress = async function() {
+            addLog('info', 'メモリストレステスト開始');
+            const startMemory = performance.memory ? performance.memory.usedJSHeapSize : 0;
+            
+            for (let i = 0; i < 20; i++) {
+                try {
+                    let result;
+                    if (tauriAPI) {
+                        result = await tauriAPI.createProject(`Stress ${i}`, 1920, 1080, 24);
+                    } else {
+                        result = await createMockProject(`Stress ${i}`, 1920, 1080, 24);
+                    }
+                } catch (error) {
+                    addLog('warn', `ストレステスト ${i} でエラー`, error.message);
+                }
+            }
+            
+            const endMemory = performance.memory ? performance.memory.usedJSHeapSize : 0;
+            const memoryDiff = endMemory - startMemory;
+            addLog('info', `メモリストレステスト完了 - メモリ増加: ${memoryDiff} bytes`);
+        };
+
+        window.clearLogs = function() {
+            document.getElementById('logOutput').innerHTML = '';
+        };
+
+        // 初期メッセージ
+        addLog('info', 'Manual Test Page 初期化完了');
+        if (tauriAPI) {
+            addLog('info', 'Tauri API が利用可能です');
+        } else {
+            addLog('warn', 'Tauri API が利用できません - モックAPIを使用します');
+        }
+    </script>
+</body>
+</html>

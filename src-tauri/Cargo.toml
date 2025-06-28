@@ -22,4 +22,28 @@ tauri = { version = "2", features = [] }
 tauri-plugin-opener = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+# 描画エンジン用依存関係
+wgpu = "25.0.2"
+winit = "0.30"
+pollster = "0.4.0"
+bytemuck = { version = "1.16", features = ["derive"] }
+# アニメーション・画像処理用
+image = { version = "0.25", features = ["png", "jpeg"] }
+# xdts形式対応用
+roxmltree = "0.20"
+# ファイル処理用
+tokio = { version = "1.40", features = ["full"] }
+# ログ出力用
+log = "0.4"
+env_logger = "0.11"
 
+[dev-dependencies]
+# テスト用依存関係
+tokio-test = "0.4"
+tempfile = "3.0"
+tauri-runtime = "2"
+tauri-runtime-wry = "2"
+wry = "0.47"
+tao = "0.30"
+uuid = { version = "1.0", features = ["v4"] }
+futures = "0.3"
