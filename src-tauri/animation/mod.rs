@@ -1,7 +1,10 @@
 use serde::{Deserialize, Serialize};
+#[cfg(feature = "specta")]
+use specta::Type;
 use chrono;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "specta", derive(Type))]
 pub struct Frame {
     pub id: String,
     pub layers: Vec<Layer>,
@@ -9,6 +12,7 @@ pub struct Frame {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "specta", derive(Type))]
 pub struct Layer {
     pub id: String,
     pub name: String,
@@ -19,6 +23,7 @@ pub struct Layer {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "specta", derive(Type))]
 pub enum BlendMode {
     Normal,
     Multiply,
@@ -27,6 +32,7 @@ pub enum BlendMode {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "specta", derive(Type))]
 pub struct Project {
     pub name: String,
     pub width: u32,

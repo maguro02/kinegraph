@@ -1,5 +1,23 @@
-import { invoke } from "@tauri-apps/api/core";
-import type { Project } from "../store/atoms";
+// 型安全なバインディングをインポート
+import { commands, type Project as GeneratedProject } from "./bindings";
+
+// atoms.tsのProject型とbindings.tsのProject型を変換
+function convertToAtomsProject(project: GeneratedProject): import("../store/atoms").Project {
+    return {
+        id: `project-${Date.now()}`, // IDを生成
+        name: project.name,
+        width: project.width,
+        height: project.height,
+        frameRate: project.frame_rate, // snake_caseからcamelCaseに変換
+        frames: project.frames.map(frame => ({
+            ...frame,
+            layers: frame.layers.map(layer => ({
+                ...layer,
+                blendMode: layer.blend_mode as any, // snake_caseからcamelCaseに変換
+            }))
+        }))
+    };
+}
 
 /**
  * フロントエンド側のログ出力関数
@@ -24,26 +42,27 @@ function logToConsole(level: "info" | "error" | "debug" | "warn", message: strin
     }
 }
 
-export async function createProject(name: string, width: number, height: number, frameRate: number): Promise<Project> {
+export async function createProject(name: string, width: number, height: number, frameRate: number): Promise<import("../store/atoms").Project> {
     logToConsole("info", "createProject 関数呼び出し開始");
     logToConsole("debug", "プロジェクトパラメータ", { name, width, height, frameRate });
 
     try {
         logToConsole("debug", "Tauri invoke create_project 実行中...");
 
-        const result = await invoke<Project>("create_project", {
-            args: {
-                name,
-                width,
-                height,
-                frameRate,
-            },
+        const result = await commands.createProject({
+            name,
+            width,
+            height,
+            frame_rate: frameRate,
         });
 
-        logToConsole("info", "create_project コマンド正常完了");
-        logToConsole("debug", "プロジェクト作成結果", result);
-
-        return result;
+        if (result.status === "ok") {
+            logToConsole("info", "create_project コマンド正常完了");
+            logToConsole("debug", "プロジェクト作成結果", result.data);
+            return convertToAtomsProject(result.data);
+        } else {
+            throw new Error(result.error);
+        }
     } catch (error) {
         logToConsole("error", "create_project コマンドでエラーが発生", error);
 
@@ -67,12 +86,15 @@ export async function getSystemInfo(): Promise<string> {
     try {
         logToConsole("debug", "Tauri invoke get_system_info 実行中...");
 
-        const result = await invoke("get_system_info");
+        const result = await commands.getSystemInfo();
 
-        logToConsole("info", "get_system_info コマンド正常完了");
-        logToConsole("debug", "システム情報取得結果", result);
-
-        return result as string;
+        if (result.status === "ok") {
+            logToConsole("info", "get_system_info コマンド正常完了");
+            logToConsole("debug", "システム情報取得結果", result.data);
+            return result.data;
+        } else {
+            throw new Error(result.error);
+        }
     } catch (error) {
         logToConsole("error", "get_system_info コマンドでエラーが発生", error);
 
@@ -99,12 +121,15 @@ export async function initializeDrawingEngine(): Promise<string> {
     try {
         logToConsole("debug", "Tauri invoke initialize_drawing_engine 実行中...");
 
-        const result = await invoke<string>("initialize_drawing_engine");
+        const result = await commands.initializeDrawingEngine();
 
-        logToConsole("info", "initialize_drawing_engine コマンド正常完了");
-        logToConsole("debug", "描画エンジン初期化結果", result);
-
-        return result;
+        if (result.status === "ok") {
+            logToConsole("info", "initialize_drawing_engine コマンド正常完了");
+            logToConsole("debug", "描画エンジン初期化結果", result.data);
+            return result.data;
+        } else {
+            throw new Error(result.error);
+        }
     } catch (error) {
         logToConsole("error", "initialize_drawing_engine コマンドでエラーが発生", error);
         throw error;
@@ -121,16 +146,15 @@ export async function createDrawingLayer(layerId: string, width: number, height:
     try {
         logToConsole("debug", "Tauri invoke create_drawing_layer 実行中...");
 
-        const result = await invoke<string>("create_drawing_layer", {
-            layerId,
-            width,
-            height,
-        });
+        const result = await commands.createDrawingLayer(layerId, width, height);
 
-        logToConsole("info", "create_drawing_layer コマンド正常完了");
-        logToConsole("debug", "レイヤー作成結果", result);
-
-        return result;
+        if (result.status === "ok") {
+            logToConsole("info", "create_drawing_layer コマンド正常完了");
+            logToConsole("debug", "レイヤー作成結果", result.data);
+            return result.data;
+        } else {
+            throw new Error(result.error);
+        }
     } catch (error) {
         logToConsole("error", "create_drawing_layer コマンドでエラーが発生", error);
         throw error;
@@ -152,14 +176,13 @@ export async function drawLineOnLayer(
     logToConsole("debug", "drawLineOnLayer 関数呼び出し開始");
 
     try {
-        await invoke("draw_line_on_layer", {
-            layerId,
-            x1, y1, x2, y2,
-            color,
-            width,
-        });
+        const result = await commands.drawLineOnLayer(layerId, x1, y1, x2, y2, color, width);
 
-        logToConsole("debug", "draw_line_on_layer コマンド正常完了");
+        if (result.status === "ok") {
+            logToConsole("debug", "draw_line_on_layer コマンド正常完了");
+        } else {
+            throw new Error(result.error);
+        }
     } catch (error) {
         logToConsole("error", "draw_line_on_layer コマンドでエラーが発生", error);
         throw error;
@@ -183,13 +206,13 @@ export async function drawStrokeOnLayer(
     logToConsole("debug", "drawStrokeOnLayer 関数呼び出し開始");
 
     try {
-        await invoke("draw_stroke_on_layer", {
-            layerId,
-            points,
-            color,
-        });
+        const result = await commands.drawStrokeOnLayer(layerId, points, color);
 
-        logToConsole("debug", "draw_stroke_on_layer コマンド正常完了");
+        if (result.status === "ok") {
+            logToConsole("debug", "draw_stroke_on_layer コマンド正常完了");
+        } else {
+            throw new Error(result.error);
+        }
     } catch (error) {
         logToConsole("error", "draw_stroke_on_layer コマンドでエラーが発生", error);
         throw error;
@@ -203,12 +226,14 @@ export async function getLayerImageData(layerId: string): Promise<number[]> {
     logToConsole("debug", "getLayerImageData 関数呼び出し開始");
 
     try {
-        const result = await invoke<number[]>("get_layer_image_data", {
-            layerId,
-        });
+        const result = await commands.getLayerImageData(layerId);
 
-        logToConsole("debug", "get_layer_image_data コマンド正常完了");
-        return result;
+        if (result.status === "ok") {
+            logToConsole("debug", "get_layer_image_data コマンド正常完了");
+            return result.data;
+        } else {
+            throw new Error(result.error);
+        }
     } catch (error) {
         logToConsole("error", "get_layer_image_data コマンドでエラーが発生", error);
         throw error;
@@ -222,11 +247,13 @@ export async function clearLayer(layerId: string): Promise<void> {
     logToConsole("debug", "clearLayer 関数呼び出し開始");
 
     try {
-        await invoke("clear_layer", {
-            layerId,
-        });
+        const result = await commands.clearLayer(layerId);
 
-        logToConsole("debug", "clear_layer コマンド正常完了");
+        if (result.status === "ok") {
+            logToConsole("debug", "clear_layer コマンド正常完了");
+        } else {
+            throw new Error(result.error);
+        }
     } catch (error) {
         logToConsole("error", "clear_layer コマンドでエラーが発生", error);
         throw error;
@@ -240,11 +267,13 @@ export async function removeLayer(layerId: string): Promise<void> {
     logToConsole("debug", "removeLayer 関数呼び出し開始");
 
     try {
-        await invoke("remove_layer", {
-            layerId,
-        });
+        const result = await commands.removeLayer(layerId);
 
-        logToConsole("debug", "remove_layer コマンド正常完了");
+        if (result.status === "ok") {
+            logToConsole("debug", "remove_layer コマンド正常完了");
+        } else {
+            throw new Error(result.error);
+        }
     } catch (error) {
         logToConsole("error", "remove_layer コマンドでエラーが発生", error);
         throw error;

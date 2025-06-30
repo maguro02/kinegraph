@@ -4,6 +4,15 @@ version = "0.1.0"
 description = "A Tauri App"
 authors = ["you"]
 edition = "2021"
+default-run = "kinegraph"
+
+[features]
+default = []
+specta = ["dep:specta", "dep:tauri-specta", "dep:specta-typescript"]
+
+[[bin]]
+name = "generate-bindings"
+path = "src/bin/generate-bindings.rs"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -15,11 +24,11 @@ name = "kinegraph_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
-tauri-build = { version = "2", features = [] }
+tauri-build = { version = "2.3.0", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = [] }
-tauri-plugin-opener = "2"
+tauri = { version = "2.6.2", features = [] }
+tauri-plugin-opener = "2.4.0"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 # 描画エンジン用依存関係
@@ -41,12 +50,13 @@ futures = "0.3"
 # タイムスタンプ用
 chrono = { version = "0.4", features = ["serde"] }
 # Base64エンコーディング用
-base64 = "0.21"
+base64 = "0.22.1"
 # UUID生成用
 uuid = { version = "1.0", features = ["v4"] }
 # 型安全なRust-TypeScript連携用
-tauri-specta = { version = "2.0.0-rc.20", features = ["derive", "typescript"] }
-specta = { version = "2.0.0-rc.20", features = ["derive"] }
+specta = { version = "=2.0.0-rc.20", optional = true }
+tauri-specta = { version = "=2.0.0-rc.20", features = ["derive", "typescript"], optional = true }
+specta-typescript = { version = "0.0.7", optional = true }
 
 [dev-dependencies]
 # テスト用依存関係
@@ -54,7 +64,5 @@ tokio-test = "0.4"
 tempfile = "3.0"
 tauri-runtime = "2"
 tauri-runtime-wry = "2"
-wry = "0.47"
-tao = "0.30"
 uuid = { version = "1.0", features = ["v4"] }
 futures = "0.3"

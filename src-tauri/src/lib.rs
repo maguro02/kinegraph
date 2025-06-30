@@ -12,6 +12,9 @@ pub mod drawing_engine {
     include!("../drawing_engine/mod.rs");
 }
 
+#[cfg(feature = "specta")]
+pub mod tauri_bindings;
+
 use drawing_engine::DrawingEngine;
 use api::drawing::DrawingState;
 use log::{info, error, debug};
@@ -58,6 +61,7 @@ pub fn run() {
     debug!("[KINEGRAPH] DrawingState 状態管理登録完了");
     
     debug!("[KINEGRAPH] Tauri invoke_handler 登録中...");
+    
     let builder = builder.invoke_handler(tauri::generate_handler![
         // 既存のプロジェクトAPI
         api::create_project,
@@ -84,6 +88,7 @@ pub fn run() {
         api::get_system_memory_info,
         api::log_detailed_state
     ]);
+    
     debug!("[KINEGRAPH] invoke_handler 登録完了");
     
     info!("[KINEGRAPH] Tauri アプリケーション実行開始");

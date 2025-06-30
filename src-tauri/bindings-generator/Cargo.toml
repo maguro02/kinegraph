@@ -1,0 +1,10 @@
+[package]
+name = "bindings-generator"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+tauri = "2.6.2"
+tauri-specta = "2.0.0-rc.21"
+specta = "2.0.0-rc.21"
+kinegraph = { path = ".." }
