@@ -4,10 +4,9 @@
 /// 再現と根本原因の特定に特化しています。
 
 use std::sync::Arc;
-use tauri::State;
 use tokio::sync::Mutex;
 use kinegraph_lib::drawing_engine::DrawingEngine;
-use kinegraph_lib::api::{CreateProjectArgs, create_project};
+use kinegraph_lib::api::CreateProjectArgs;
 
 /// Tauriの状態管理の基本動作検証
 #[tokio::test]

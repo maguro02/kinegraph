@@ -1,15 +1,11 @@
+mod test_helpers;
+
 use std::sync::Arc;
-use tokio::sync::Mutex;
-
-// モジュールの再エクスポート
 use kinegraph_lib::drawing_engine::DrawingEngine;
-use kinegraph_lib::animation::Project;
-use kinegraph_lib::api::{CreateProjectArgs, get_system_info};
-
-/// テスト用のDrawingEngine状態作成
-fn create_test_state() -> Arc<Mutex<DrawingEngine>> {
-    Arc::new(Mutex::new(DrawingEngine::new()))
-}
+use kinegraph_lib::api::get_system_info;
+use test_helpers::*;
+use test_helpers::test_specs::*;
+use test_helpers::assertions::*;
 
 #[tokio::test]
 async fn test_drawing_engine_initialization() {
@@ -78,29 +74,16 @@ async fn test_get_system_info_command() {
 async fn test_drawing_engine_creation() {
     let engine = DrawingEngine::new();
     
-    // 新しいエンジンインスタンスの初期状態を確認
-    assert!(engine.surface.is_none());
-    assert!(engine.adapter.is_none());
-    assert!(engine.device.is_none());
-    assert!(engine.queue.is_none());
+    assert_drawing_engine_initial_state(&engine);
     
     println!("DrawingEngine created with initial state verified");
 }
 
 #[tokio::test]
 async fn test_project_creation() {
-    let project = Project::new(
-        "Test Animation".to_string(),
-        3840,
-        2160,
-        60.0
-    );
+    let project = create_test_project("Test Animation", UHD_WIDTH, UHD_HEIGHT, HIGH_FRAME_RATE);
     
-    assert_eq!(project.name, "Test Animation");
-    assert_eq!(project.width, 3840);
-    assert_eq!(project.height, 2160);
-    assert_eq!(project.frame_rate, 60.0);
-    assert!(project.frames.is_empty());
+    assert_project_properties(&project, "Test Animation", UHD_WIDTH, UHD_HEIGHT, HIGH_FRAME_RATE);
     
     println!("Project created: {:?}", project);
 }
@@ -145,19 +128,9 @@ async fn test_state_persistence() {
 
 #[tokio::test]
 async fn test_create_project_args_structure() {
-    // CreateProjectArgsの構造を検証
-    let args = CreateProjectArgs {
-        name: "Serialization Test".to_string(),
-        width: 1280,
-        height: 720,
-        frame_rate: 30.0,
-    };
+    let args = create_test_project_args("Serialization Test", HD_WIDTH, HD_HEIGHT, 30.0);
     
-    // 引数が正しく構造化されていることを確認
-    assert_eq!(args.name, "Serialization Test");
-    assert_eq!(args.width, 1280);
-    assert_eq!(args.height, 720);
-    assert_eq!(args.frame_rate, 30.0);
+    assert_create_project_args(&args, "Serialization Test", HD_WIDTH, HD_HEIGHT, 30.0);
     
     println!("CreateProjectArgs validation passed");
 }
@@ -228,11 +201,11 @@ mod performance_tests {
         let mut projects = Vec::new();
         
         for i in 0..100 {
-            let project = Project::new(
-                format!("Memory Test Project {}", i),
-                1920,
-                1080,
-                24.0
+            let project = create_test_project(
+                &format!("Memory Test Project {}", i),
+                DEFAULT_WIDTH,
+                DEFAULT_HEIGHT,
+                DEFAULT_FRAME_RATE
             );
             projects.push(project);
         }

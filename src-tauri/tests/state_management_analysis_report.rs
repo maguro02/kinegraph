@@ -7,7 +7,6 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 use kinegraph_lib::drawing_engine::DrawingEngine;
 use kinegraph_lib::api::CreateProjectArgs;
-use futures::future;
 
 #[tokio::test]
 async fn test_comprehensive_state_management_analysis() {

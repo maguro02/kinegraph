@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use chrono;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Frame {
@@ -36,12 +37,19 @@ pub struct Project {
 
 impl Project {
     pub fn new(name: String, width: u32, height: u32, frame_rate: f32) -> Self {
+        // 初期フレームを作成
+        let initial_frame = Frame {
+            id: format!("frame_{}", chrono::Utc::now().timestamp_millis()),
+            layers: Vec::new(),
+            duration: 1.0 / frame_rate, // 1フレーム分の時間
+        };
+        
         Self {
             name,
             width,
             height,
             frame_rate,
-            frames: Vec::new(),
+            frames: vec![initial_frame], // 初期フレームを含める
         }
     }
 }

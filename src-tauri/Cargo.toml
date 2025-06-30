@@ -36,6 +36,12 @@ tokio = { version = "1.40", features = ["full"] }
 # ログ出力用
 log = "0.4"
 env_logger = "0.11"
+# 非同期処理用
+futures = "0.3"
+# タイムスタンプ用
+chrono = { version = "0.4", features = ["serde"] }
+# Base64エンコーディング用
+base64 = "0.21"
 
 [dev-dependencies]
 # テスト用依存関係
