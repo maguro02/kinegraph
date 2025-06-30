@@ -1,4 +1,5 @@
 import '@testing-library/jest-dom';
+import { vi, beforeEach, afterEach } from 'vitest';
 
 // Tauri API のモック設定
 const mockInvoke = vi.fn();

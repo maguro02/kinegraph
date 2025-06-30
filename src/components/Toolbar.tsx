@@ -40,43 +40,54 @@ export function Toolbar() {
   ];
 
   return (
-    <div className="toolbar">
-      {/* ツール選択 */}
-      <div className="toolbar-group">
-        {tools.map((tool) => (
-          <Button
-            key={tool.id}
-            variant="icon"
-            onClick={() => setCurrentTool(tool.id)}
-            className={currentTool === tool.id ? 'bg-primary-600 text-white' : ''}
-            icon={tool.icon}
+    <div className="fixed left-4 top-20 z-50 bg-secondary-800 border border-secondary-700 rounded-xl shadow-lg p-3">
+      <div className="flex flex-col gap-4">
+        {/* ツール選択 */}
+        <div className="flex flex-col gap-2">
+          {tools.map((tool) => (
+            <Button
+              key={tool.id}
+              variant="icon"
+              onClick={() => setCurrentTool(tool.id)}
+              className={currentTool === tool.id ? 'bg-primary-600 text-white' : ''}
+              icon={tool.icon}
+            />
+          ))}
+        </div>
+
+        {/* 区切り線 */}
+        <div className="border-t border-secondary-700"></div>
+
+        {/* ブラシサイズ */}
+        <div className="flex flex-col gap-2 items-center">
+          <label className="text-xs text-secondary-300">サイズ</label>
+          <div className="flex flex-col items-center gap-1">
+            <input
+              type="range"
+              min="1"
+              max="50"
+              value={brushSize}
+              onChange={(e) => setBrushSize(Number(e.target.value))}
+              className="w-16 h-2 bg-secondary-600 rounded-lg appearance-none cursor-pointer [writing-mode:bt-lr] transform rotate-180"
+              style={{ transform: 'rotate(-90deg)' }}
+            />
+            <span className="text-xs text-secondary-300 min-w-[2rem] text-center">{brushSize}</span>
+          </div>
+        </div>
+
+        {/* 区切り線 */}
+        <div className="border-t border-secondary-700"></div>
+
+        {/* カラーピッカー */}
+        <div className="flex flex-col gap-2 items-center">
+          <label className="text-xs text-secondary-300">色</label>
+          <input
+            type="color"
+            value={color}
+            onChange={(e) => setColor(e.target.value)}
+            className="w-8 h-8 rounded-lg border border-secondary-600 cursor-pointer"
           />
-        ))}
-      </div>
-
-      {/* ブラシサイズ */}
-      <div className="toolbar-group">
-        <label className="text-xs text-secondary-300">サイズ</label>
-        <input
-          type="range"
-          min="1"
-          max="50"
-          value={brushSize}
-          onChange={(e) => setBrushSize(Number(e.target.value))}
-          className="w-20 h-2 bg-secondary-600 rounded-lg appearance-none cursor-pointer"
-        />
-        <span className="text-xs text-secondary-300 w-8 text-center">{brushSize}</span>
-      </div>
-
-      {/* カラーピッカー */}
-      <div className="toolbar-group">
-        <label className="text-xs text-secondary-300">色</label>
-        <input
-          type="color"
-          value={color}
-          onChange={(e) => setColor(e.target.value)}
-          className="w-8 h-8 rounded border border-secondary-600 cursor-pointer"
-        />
+        </div>
       </div>
     </div>
   );

@@ -2,6 +2,7 @@ import { atom } from 'jotai';
 
 // プロジェクト状態管理
 export interface Project {
+  id: string;
   name: string;
   width: number;
   height: number;

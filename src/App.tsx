@@ -3,11 +3,11 @@ import { Provider } from 'jotai';
 import { useAtom } from 'jotai';
 import { projectAtom } from './store/atoms';
 import { createProject, initializeDebugLogging } from './lib/tauri';
-import { Toolbar } from './components/Toolbar';
 import { Canvas } from './components/Canvas';
-import { LayerPanel } from './components/LayerPanel';
 import { Timeline } from './components/Timeline';
 import { Button } from './components/Button';
+import { Toolbar } from './components/Toolbar';
+import { LayerPanel } from './components/LayerPanel';
 
 function AppContent() {
   const [project, setProject] = useAtom(projectAtom);
@@ -52,9 +52,9 @@ function AppContent() {
   }
 
   return (
-    <div className="h-screen bg-secondary-900 flex flex-col">
-      {/* メニューバー */}
-      <div className="bg-secondary-800 border-b border-secondary-700 px-4 py-2 flex items-center justify-between">
+    <div className="h-screen bg-secondary-900 relative overflow-hidden">
+      {/* メニューバー - 上部固定 */}
+      <div className="absolute top-0 left-0 right-0 h-12 z-50 bg-secondary-800 border-b border-secondary-700 px-4 py-2 flex items-center justify-between">
         <div className="text-lg font-semibold text-secondary-100">
           Kinegraph - {project.name}
         </div>
@@ -66,35 +66,21 @@ function AppContent() {
         </div>
       </div>
 
-      {/* ツールバー */}
-      <Toolbar />
-
-      {/* メインエリア */}
-      <div className="flex flex-1 overflow-hidden">
-        {/* レイヤーパネル */}
-        <div className="bg-secondary-800 border-r border-secondary-700">
-          <LayerPanel />
-        </div>
-
-        {/* キャンバスエリア */}
-        <div className="flex-1 flex flex-col">
-          <Canvas width={project.width} height={project.height} />
-        </div>
-
-        {/* 右サイドパネル（将来的にプロパティパネルなど） */}
-        <div className="w-64 bg-secondary-800 border-l border-secondary-700 p-4">
-          <div className="text-sm text-secondary-300 mb-4">プロパティ</div>
-          <div className="space-y-2 text-sm text-secondary-400">
-            <div>キャンバス: {project.width} × {project.height}</div>
-            <div>フレームレート: {project.frameRate} fps</div>
-          </div>
-        </div>
+      {/* キャンバスエリア - 全画面表示（メニューバーとタイムラインを除く） */}
+      <div className="absolute top-12 left-0 right-0 bottom-32 bg-secondary-900">
+        <Canvas width={project.width} height={project.height} />
       </div>
 
-      {/* タイムライン */}
-      <div className="bg-secondary-800 border-t border-secondary-700">
+      {/* タイムライン - 下部固定 */}
+      <div className="absolute bottom-0 left-0 right-0 h-32 z-50 bg-secondary-800 border-t border-secondary-700">
         <Timeline />
       </div>
+
+      {/* ツールバー - 左側固定 */}
+      <Toolbar />
+
+      {/* レイヤーパネル - 右側固定 */}
+      <LayerPanel />
     </div>
   );
 }
