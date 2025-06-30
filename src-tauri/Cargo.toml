@@ -42,6 +42,11 @@ futures = "0.3"
 chrono = { version = "0.4", features = ["serde"] }
 # Base64エンコーディング用
 base64 = "0.21"
+# UUID生成用
+uuid = { version = "1.0", features = ["v4"] }
+# 型安全なRust-TypeScript連携用
+tauri-specta = { version = "2.0.0-rc.20", features = ["derive", "typescript"] }
+specta = { version = "2.0.0-rc.20", features = ["derive"] }
 
 [dev-dependencies]
 # テスト用依存関係

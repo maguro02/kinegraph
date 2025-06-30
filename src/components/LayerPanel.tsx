@@ -3,7 +3,8 @@ import { useAtom } from 'jotai';
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { projectAtom, currentFrameAtom, selectedLayerAtom, Layer } from '../store/atoms.ts';
 import { Button } from './Button.tsx';
-import { useDrawingEngine } from '../lib/useDrawingEngine.ts';
+import { useLayerManagement } from '../lib/useLayerManagement.ts';
+import { invoke } from '@tauri-apps/api/core';
 
 // アイコンコンポーネント
 const EyeIcon = ({ visible }: { visible: boolean }) => (
@@ -45,23 +46,40 @@ const EditIcon = () => (
 );
 
 // レイヤーサムネイル用のミニキャンバスコンポーネント
-const LayerThumbnail = ({ layerId, drawingEngine }: { layerId: string; drawingEngine: any }) => {
+const LayerThumbnail = ({ layerId }: { layerId: string }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   
   useEffect(() => {
     const renderThumbnail = async () => {
       const canvas = canvasRef.current;
-      if (!canvas || !layerId || !drawingEngine) return;
+      if (!canvas || !layerId) return;
       
       try {
-        await drawingEngine.renderToCanvas(canvas, layerId);
+        // Tauri APIを使用してレイヤーのサムネイルデータを取得
+        const imageData = await invoke<number[]>('get_layer_image_data', { layerId });
+        
+        // Canvasに描画
+        const ctx = canvas.getContext('2d');
+        if (ctx && imageData.length > 0) {
+          // サムネイル用の小さいサイズに調整
+          const width = 48;
+          const height = 32;
+          canvas.width = width;
+          canvas.height = height;
+          
+          const imgData = ctx.createImageData(width, height);
+          // TODO: 適切なサムネイル生成を実装（現在は仮実装）
+          const data = new Uint8Array(imageData);
+          imgData.data.set(data.slice(0, imgData.data.length));
+          ctx.putImageData(imgData, 0, 0);
+        }
       } catch (error) {
         console.warn('レイヤーサムネイルの描画に失敗:', error);
       }
     };
     
     renderThumbnail();
-  }, [layerId, drawingEngine]);
+  }, [layerId]);
   
   return (
     <canvas 
@@ -80,7 +98,7 @@ export function LayerPanel() {
   const [editingName, setEditingName] = useState('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
   
-  const { drawingEngine, isInitialized: isEngineInitialized, error: engineError, clearError } = useDrawingEngine();
+  const { isInitialized: isEngineInitialized, error: engineError, clearError } = useLayerManagement();
   const [error, setError] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [debugInfo, setDebugInfo] = useState<{
@@ -112,7 +130,7 @@ export function LayerPanel() {
       maxLayers,
       canAddLayer,
       isEngineInitialized,
-      hasDrawingEngine: !!drawingEngine
+      hasDrawingEngine: isEngineInitialized
     };
     
     console.log('📊 レイヤー作成前の状態:', preConditions);
@@ -155,7 +173,12 @@ export function LayerPanel() {
       
       // Rustエンジンでテクスチャ作成
       console.log(`🦀 Rustエンジンでテクスチャ作成開始: ${newLayerId} (${project.width}x${project.height})`);
-      await drawingEngine!.createLayer(newLayerId, project.width, project.height);
+      // Tauri APIを直接呼び出してレイヤーを作成
+      await invoke('create_drawing_layer', {
+        layerId: newLayerId,
+        width: project.width,
+        height: project.height
+      });
       console.log('✅ Rustエンジンテクスチャ作成完了');
       
       // プロジェクト状態を更新
@@ -206,7 +229,7 @@ export function LayerPanel() {
     } finally {
       setIsCreating(false);
     }
-  }, [project, currentFrame, layers, canAddLayer, setProject, setSelectedLayer, isEngineInitialized, drawingEngine]);
+  }, [project, currentFrame, layers, canAddLayer, setProject, setSelectedLayer, isEngineInitialized]);
 
   // レイヤー削除
   const handleDeleteLayer = useCallback(async (layerId: string) => {
@@ -214,7 +237,8 @@ export function LayerPanel() {
     
     try {
       // Rustエンジンからテクスチャを削除
-      await drawingEngine!.removeLayer(layerId);
+      // Tauri APIを直接呼び出してレイヤーを削除
+      await invoke('remove_layer', { layerId });
       
       // プロジェクト状態を更新
       const updatedProject = { ...project };
@@ -497,7 +521,7 @@ export function LayerPanel() {
                   title="レイヤー名を編集"
                 />
                 
-                <LayerThumbnail layerId={layer.id} drawingEngine={drawingEngine} />
+                <LayerThumbnail layerId={layer.id} />
               </div>
             </div>
           ))}

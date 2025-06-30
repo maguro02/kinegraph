@@ -2,13 +2,50 @@ use crate::drawing_engine::{DrawingEngine, DrawStroke, Vertex2D};
 use log::{info, debug, warn, error, trace};
 use std::collections::HashMap;
 use tokio::sync::Mutex;
-use tauri::State;
+use tauri::{State, AppHandle, Emitter};
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
+
+/// 描画更新イベント
+#[derive(Debug, Clone, Serialize)]
+pub struct DrawingUpdate {
+    pub layer_id: String,
+    pub update_type: UpdateType,
+    pub data: Vec<u8>,
+    pub rect: UpdateRect,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum UpdateType {
+    StrokeProgress,  // ストローク描画中
+    StrokeComplete,  // ストローク完了
+    PartialUpdate,   // 部分更新
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct UpdateRect {
+    pub x: u32,
+    pub y: u32,
+    pub width: u32,
+    pub height: u32,
+}
+
+/// アクティブなストローク情報
+#[derive(Debug)]
+struct ActiveStroke {
+    id: String,
+    layer_id: String,
+    color: [f32; 4],
+    points: Vec<StrokePoint>,
+    last_update_index: usize,
+}
 
 /// 描画エンジンの状態管理
 pub struct DrawingState {
     engine: Mutex<Option<DrawingEngine>>,
     layers: Mutex<HashMap<String, (u32, u32)>>, // layer_id -> (width, height)
+    active_strokes: Mutex<HashMap<String, ActiveStroke>>, // stroke_id -> ActiveStroke
 }
 
 impl DrawingState {
@@ -17,6 +54,7 @@ impl DrawingState {
         Self {
             engine: Mutex::new(None),
             layers: Mutex::new(HashMap::new()),
+            active_strokes: Mutex::new(HashMap::new()),
         }
     }
 
@@ -251,7 +289,7 @@ pub async fn draw_line_on_layer(
 }
 
 /// レイヤーにストロークを描画（筆圧対応）
-#[derive(Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StrokePoint {
     pub x: f32,
     pub y: f32,
@@ -392,6 +430,179 @@ pub async fn remove_layer(
     } else {
         Err(format!("レイヤーが見つかりません: {}", layer_id))
     }
+}
+
+/// リアルタイムストローク描画を開始
+#[tauri::command]
+pub async fn begin_realtime_stroke(
+    app: AppHandle,
+    layer_id: String,
+    color: [f32; 4],
+    _brush_size: f32,
+    tool: String,
+    state: State<'_, DrawingState>,
+) -> Result<String, String> {
+    debug!("[Drawing API] リアルタイムストローク開始: layer={}, tool={}", layer_id, tool);
+    
+    // レイヤーの存在確認
+    {
+        let layers_guard = state.layers.lock().await;
+        if !layers_guard.contains_key(&layer_id) {
+            return Err(format!("レイヤーが見つかりません: {}", layer_id));
+        }
+    }
+    
+    // 新しいストロークIDを生成
+    let stroke_id = Uuid::new_v4().to_string();
+    
+    // アクティブストロークとして登録
+    {
+        let mut strokes_guard = state.active_strokes.lock().await;
+        strokes_guard.insert(stroke_id.clone(), ActiveStroke {
+            id: stroke_id.clone(),
+            layer_id: layer_id.clone(),
+            color,
+            points: Vec::new(),
+            last_update_index: 0,
+        });
+    }
+    
+    // フロントエンドに通知
+    app.emit("stroke-started", &stroke_id)
+        .map_err(|e| format!("イベント送信エラー: {}", e))?;
+    
+    info!("[Drawing API] リアルタイムストローク開始: id={}", stroke_id);
+    Ok(stroke_id)
+}
+
+/// リアルタイムストロークに点を追加
+#[tauri::command]
+pub async fn add_realtime_stroke_point(
+    app: AppHandle,
+    stroke_id: String,
+    point: StrokePoint,
+    state: State<'_, DrawingState>,
+) -> Result<(), String> {
+    trace!("[Drawing API] ストローク点追加: stroke={}, point=({}, {})", 
+        stroke_id, point.x, point.y);
+    
+    let (layer_id, should_update) = {
+        let mut strokes_guard = state.active_strokes.lock().await;
+        let stroke = strokes_guard.get_mut(&stroke_id)
+            .ok_or_else(|| format!("アクティブストロークが見つかりません: {}", stroke_id))?;
+        
+        stroke.points.push(point.clone());
+        let layer_id = stroke.layer_id.clone();
+        
+        // 一定数の点が追加されたら更新する（パフォーマンス調整）
+        let should_update = stroke.points.len() - stroke.last_update_index >= 5;
+        if should_update {
+            stroke.last_update_index = stroke.points.len();
+        }
+        
+        (layer_id, should_update)
+    };
+    
+    // 描画エンジンで部分的に描画し、更新をフロントエンドに送信
+    if should_update {
+        let update_rect = calculate_update_rect(&point);
+        
+        // 部分的な描画処理
+        let partial_data = {
+            let mut engine_guard = state.engine.lock().await;
+            let engine = engine_guard.as_mut()
+                .ok_or("描画エンジンが初期化されていません")?;
+            
+            // ストロークの最新部分のみを描画
+            let strokes_guard = state.active_strokes.lock().await;
+            let stroke = strokes_guard.get(&stroke_id).unwrap();
+            
+            // 最後の更新以降の点のみを描画
+            let recent_points = &stroke.points[stroke.last_update_index..];
+            if recent_points.len() >= 2 {
+                let partial_stroke = DrawStroke {
+                    color: stroke.color,
+                    points: recent_points.iter()
+                        .map(|p| {
+                            let ndc_x = (p.x / 1920.0) * 2.0 - 1.0;
+                            let ndc_y = -((p.y / 1080.0) * 2.0 - 1.0);
+                            Vertex2D::new(ndc_x, ndc_y, stroke.color, p.pressure * 10.0)
+                        })
+                        .collect(),
+                    base_width: 10.0,
+                    is_closed: false,
+                };
+                
+                engine.draw_stroke_to_layer(&layer_id, &partial_stroke)
+                    .map_err(|e| format!("部分描画エラー: {}", e))?;
+            }
+            
+            // 更新領域のピクセルデータを取得
+            get_partial_texture_data(engine, &layer_id, &update_rect).await?
+        };
+        
+        // リアルタイム更新イベントを送信
+        let update = DrawingUpdate {
+            layer_id,
+            update_type: UpdateType::StrokeProgress,
+            data: partial_data,
+            rect: update_rect,
+        };
+        
+        app.emit("drawing-update", &update)
+            .map_err(|e| format!("更新イベント送信エラー: {}", e))?;
+    }
+    
+    Ok(())
+}
+
+/// リアルタイムストロークを完了
+#[tauri::command]
+pub async fn complete_realtime_stroke(
+    app: AppHandle,
+    stroke_id: String,
+    state: State<'_, DrawingState>,
+) -> Result<(), String> {
+    debug!("[Drawing API] リアルタイムストローク完了: {}", stroke_id);
+    
+    // アクティブストロークを取得して削除
+    let stroke_data = {
+        let mut strokes_guard = state.active_strokes.lock().await;
+        strokes_guard.remove(&stroke_id)
+            .ok_or_else(|| format!("アクティブストロークが見つかりません: {}", stroke_id))?
+    };
+    
+    // 完了通知を送信
+    app.emit("stroke-completed", &stroke_id)
+        .map_err(|e| format!("完了イベント送信エラー: {}", e))?;
+    
+    info!("[Drawing API] リアルタイムストローク完了: id={}, points={}", 
+        stroke_id, stroke_data.points.len());
+    Ok(())
+}
+
+/// 更新領域を計算
+fn calculate_update_rect(point: &StrokePoint) -> UpdateRect {
+    // ブラシサイズを考慮して更新領域を計算
+    let brush_radius = (point.pressure * 20.0).ceil() as u32;
+    let x = (point.x - brush_radius as f32).max(0.0) as u32;
+    let y = (point.y - brush_radius as f32).max(0.0) as u32;
+    let width = (brush_radius * 2) + 1;
+    let height = (brush_radius * 2) + 1;
+    
+    UpdateRect { x, y, width, height }
+}
+
+/// 部分的なテクスチャデータを取得
+async fn get_partial_texture_data(
+    engine: &mut DrawingEngine,
+    layer_id: &str,
+    _rect: &UpdateRect,
+) -> Result<Vec<u8>, String> {
+    // TODO: 実際の部分データ取得を実装
+    // 現時点では全体データを返す（最適化は後で実装）
+    engine.get_layer_texture_data(layer_id).await
+        .map_err(|e| format!("部分データ取得エラー: {}", e))
 }
 
 /// 描画エンジンの統計情報を取得

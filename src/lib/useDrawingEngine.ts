@@ -1,71 +1,91 @@
-import { useState, useEffect, useCallback } from 'react';
-import { initializeDrawingEngine, createDrawingLayer, removeLayer } from './tauri.ts';
+import { useEffect, useRef, useCallback } from 'react';
+import { drawingEngine, DrawingUpdate } from './drawingEngine';
 
-export interface DrawingEngine {
-  createLayer: (layerId: string, width: number, height: number) => Promise<void>;
-  removeLayer: (layerId: string) => Promise<void>;
-  renderToCanvas: (canvas: HTMLCanvasElement, layerId: string) => Promise<void>;
-}
+/**
+ * 描画エンジンとキャンバスを連携するカスタムフック
+ */
+export function useDrawingEngine(
+  canvasRef: React.RefObject<HTMLCanvasElement>,
+  layerId: string | null
+) {
+  const activeStrokeId = useRef<string | null>(null);
 
-export function useDrawingEngine() {
-  const [drawingEngine, setDrawingEngine] = useState<DrawingEngine | null>(null);
-  const [isInitialized, setIsInitialized] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  // 描画更新ハンドラー
+  const handleDrawingUpdate = useCallback((update: DrawingUpdate) => {
+    if (!canvasRef.current) return;
+    
+    // 部分更新をキャンバスに適用
+    drawingEngine.applyPartialUpdate(canvasRef.current, update);
+  }, [canvasRef]);
 
-  const clearError = useCallback(() => {
-    setError(null);
-  }, []);
-
-  // 描画エンジンの初期化
+  // リスナーの登録/解除
   useEffect(() => {
-    let isMounted = true;
+    if (!layerId) return;
 
-    const initEngine = async () => {
-      try {
-        setError(null);
-        await initializeDrawingEngine();
-        
-        if (isMounted) {
-          const engine: DrawingEngine = {
-            createLayer: async (layerId: string, width: number, height: number) => {
-              await createDrawingLayer(layerId, width, height);
-            },
-            removeLayer: async (layerId: string) => {
-              await removeLayer(layerId);
-            },
-            renderToCanvas: async (canvas: HTMLCanvasElement, _layerId: string) => {
-              // TODO: 実際の描画処理を実装
-              const ctx = canvas.getContext('2d');
-              if (ctx) {
-                ctx.fillStyle = '#333';
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-              }
-            }
-          };
-          
-          setDrawingEngine(engine);
-          setIsInitialized(true);
-        }
-      } catch (err) {
-        if (isMounted) {
-          const errorMessage = err instanceof Error ? err.message : String(err);
-          setError(errorMessage);
-          setIsInitialized(false);
-        }
-      }
-    };
-
-    initEngine();
+    drawingEngine.addUpdateListener(layerId, handleDrawingUpdate);
 
     return () => {
-      isMounted = false;
+      drawingEngine.removeUpdateListener(layerId, handleDrawingUpdate);
     };
+  }, [layerId, handleDrawingUpdate]);
+
+  // リアルタイムストロークを開始
+  const beginStroke = useCallback(async (
+    color: [number, number, number, number],
+    brushSize: number,
+    tool: string
+  ) => {
+    if (!layerId) {
+      console.error('レイヤーIDが設定されていません');
+      return;
+    }
+
+    try {
+      const strokeId = await drawingEngine.beginRealtimeStroke(
+        layerId,
+        color,
+        brushSize,
+        tool
+      );
+      activeStrokeId.current = strokeId;
+      console.debug(`ストローク開始: ${strokeId}`);
+    } catch (error) {
+      console.error('ストローク開始エラー:', error);
+    }
+  }, [layerId]);
+
+  // ストロークに点を追加
+  const addStrokePoint = useCallback(async (x: number, y: number, pressure: number) => {
+    if (!activeStrokeId.current) return;
+
+    try {
+      await drawingEngine.addRealtimeStrokePoint(activeStrokeId.current, {
+        x,
+        y,
+        pressure
+      });
+    } catch (error) {
+      console.error('ストローク点追加エラー:', error);
+    }
+  }, []);
+
+  // ストロークを完了
+  const completeStroke = useCallback(async () => {
+    if (!activeStrokeId.current) return;
+
+    try {
+      await drawingEngine.completeRealtimeStroke(activeStrokeId.current);
+      console.debug(`ストローク完了: ${activeStrokeId.current}`);
+      activeStrokeId.current = null;
+    } catch (error) {
+      console.error('ストローク完了エラー:', error);
+    }
   }, []);
 
   return {
-    drawingEngine,
-    isInitialized,
-    error,
-    clearError
+    beginStroke,
+    addStrokePoint,
+    completeStroke,
+    isDrawing: () => activeStrokeId.current !== null
   };
 }
