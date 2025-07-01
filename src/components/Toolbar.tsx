@@ -1,5 +1,5 @@
 import { useAtom } from 'jotai';
-import { toolAtom, brushSizeAtom, colorAtom } from '../store/atoms';
+import { toolAtom, brushSizeAtom, colorAtom, jointTypeAtom, type JointType } from '../store/atoms';
 import { Button } from './Button';
 
 // アイコンコンポーネント（簡易版）
@@ -31,6 +31,7 @@ export function Toolbar() {
   const [currentTool, setCurrentTool] = useAtom(toolAtom);
   const [brushSize, setBrushSize] = useAtom(brushSizeAtom);
   const [color, setColor] = useAtom(colorAtom);
+  const [jointType, setJointType] = useAtom(jointTypeAtom);
 
   const tools = [
     { id: 'pen' as const, icon: <PenIcon />, label: 'ペン' },
@@ -87,6 +88,76 @@ export function Toolbar() {
             onChange={(e) => setColor(e.target.value)}
             className="w-8 h-8 rounded-lg border border-secondary-600 cursor-pointer"
           />
+        </div>
+
+        {/* 区切り線 */}
+        <div className="border-t border-secondary-700"></div>
+
+        {/* ジョイントタイプ選択 */}
+        <div className="flex flex-col gap-2">
+          <label className="text-xs text-secondary-300 text-center">線の接続</label>
+          <div className="flex flex-col gap-1">
+            <button
+              onClick={() => setJointType({ type: 'round', segments: 8 })}
+              className={`px-2 py-1 text-xs rounded ${
+                jointType.type === 'round' ? 'bg-primary-600 text-white' : 'bg-secondary-700 text-secondary-300 hover:bg-secondary-600'
+              }`}
+              title="滑らかな接続"
+            >
+              ラウンド
+            </button>
+            <button
+              onClick={() => setJointType({ type: 'bevel' })}
+              className={`px-2 py-1 text-xs rounded ${
+                jointType.type === 'bevel' ? 'bg-primary-600 text-white' : 'bg-secondary-700 text-secondary-300 hover:bg-secondary-600'
+              }`}
+              title="面取り接続"
+            >
+              ベベル
+            </button>
+            <button
+              onClick={() => setJointType({ type: 'miter', limit: 4.0 })}
+              className={`px-2 py-1 text-xs rounded ${
+                jointType.type === 'miter' ? 'bg-primary-600 text-white' : 'bg-secondary-700 text-secondary-300 hover:bg-secondary-600'
+              }`}
+              title="鋭角的な接続"
+            >
+              マイター
+            </button>
+          </div>
+          
+          {/* ラウンドジョイントのセグメント数調整 */}
+          {jointType.type === 'round' && (
+            <div className="flex flex-col gap-1 mt-2">
+              <label className="text-xs text-secondary-400">滑らかさ</label>
+              <input
+                type="range"
+                min="3"
+                max="16"
+                value={jointType.segments}
+                onChange={(e) => setJointType({ type: 'round', segments: Number(e.target.value) })}
+                className="w-full h-2 bg-secondary-600 rounded-lg appearance-none cursor-pointer"
+              />
+              <span className="text-xs text-secondary-400 text-center">{jointType.segments}</span>
+            </div>
+          )}
+          
+          {/* マイタージョイントのリミット調整 */}
+          {jointType.type === 'miter' && (
+            <div className="flex flex-col gap-1 mt-2">
+              <label className="text-xs text-secondary-400">リミット</label>
+              <input
+                type="range"
+                min="1"
+                max="10"
+                step="0.5"
+                value={jointType.limit}
+                onChange={(e) => setJointType({ type: 'miter', limit: Number(e.target.value) })}
+                className="w-full h-2 bg-secondary-600 rounded-lg appearance-none cursor-pointer"
+              />
+              <span className="text-xs text-secondary-400 text-center">{jointType.limit.toFixed(1)}</span>
+            </div>
+          )}
         </div>
       </div>
     </div>

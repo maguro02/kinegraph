@@ -25,6 +25,12 @@ export interface Layer {
   locked: boolean;
 }
 
+// ジョイントタイプ
+export type JointType = 
+  | { type: 'miter'; limit: number }
+  | { type: 'round'; segments: number }
+  | { type: 'bevel' };
+
 // アトム定義
 export const projectAtom = atom<Project | null>(null);
 export const currentFrameIndexAtom = atom<number>(0);
@@ -32,6 +38,7 @@ export const selectedLayerAtom = atom<string | null>(null);
 export const toolAtom = atom<'pen' | 'eraser' | 'bucket' | 'select'>('pen');
 export const brushSizeAtom = atom<number>(5);
 export const colorAtom = atom<string>('#000000');
+export const jointTypeAtom = atom<JointType>({ type: 'round', segments: 8 });
 
 // 計算されたアトム
 export const currentFrameAtom = atom((get) => {

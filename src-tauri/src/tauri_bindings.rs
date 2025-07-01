@@ -27,7 +27,12 @@ pub fn generate_bindings() {
             crate::api::get_detailed_engine_state,
             crate::api::get_all_layers_info,
             crate::api::get_system_memory_info,
-            crate::api::log_detailed_state
+            crate::api::log_detailed_state,
+            
+            // リアルタイムストロークAPI
+            crate::api::begin_realtime_stroke,
+            crate::api::add_realtime_stroke_point,
+            crate::api::complete_realtime_stroke
         ]);
     
     let bindings_path = std::path::Path::new("../src/lib/bindings.ts");

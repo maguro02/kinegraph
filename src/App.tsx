@@ -2,42 +2,57 @@ import { useEffect } from 'react';
 import { Provider } from 'jotai';
 import { useAtom } from 'jotai';
 import { projectAtom } from './store/atoms';
-import { createProject, initializeDebugLogging } from './lib/tauri';
 import { Canvas } from './components/Canvas';
 import { Timeline } from './components/Timeline';
 import { Button } from './components/Button';
 import { Toolbar } from './components/Toolbar';
 import { LayerPanel } from './components/LayerPanel';
+import { HybridDrawingEngine } from './lib/hybridDrawingEngine';
 
 function AppContent() {
   const [project, setProject] = useAtom(projectAtom);
 
   useEffect(() => {
-    // デバッグログ初期化
-    const initDebug = async () => {
+    // ハイブリッドシステムでは、プロジェクト管理はRust側で行う
+    // 初期状態を取得
+    const initHybridSystem = async () => {
       try {
-        await initializeDebugLogging();
+        const state = await HybridDrawingEngine.getDrawingState();
+        console.log("[App] ハイブリッドシステム初期状態:", state);
+        
+        // プロジェクトのダミーデータを設定（既存のコンポーネントとの互換性のため）
+        if (!project) {
+          setProject({
+            id: 'project-1',
+            name: 'ハイブリッドプロジェクト',
+            width: 1920,
+            height: 1080,
+            frameRate: 24,
+            frames: [
+              {
+                id: 'frame-1',
+                duration: 1,
+                layers: state.layers.map(l => ({
+                  id: l.id,
+                  name: l.name,
+                  visible: l.visible,
+                  opacity: l.opacity,
+                  blendMode: (l.blend_mode === 'multiply' ? 'Multiply' : 
+                            l.blend_mode === 'screen' ? 'Screen' : 
+                            l.blend_mode === 'overlay' ? 'Overlay' : 'Normal') as 'Normal' | 'Multiply' | 'Screen' | 'Overlay',
+                  locked: false,
+                  data: null
+                }))
+              }
+            ]
+          });
+        }
       } catch (error) {
-        console.error('デバッグログ初期化に失敗しました:', error);
+        console.error('ハイブリッドシステムの初期化に失敗しました:', error);
       }
     };
 
-    // デモ用のプロジェクトを作成
-    const initProject = async () => {
-      try {
-        const newProject = await createProject('サンプルプロジェクト', 1920, 1080, 24);
-        setProject(newProject);
-      } catch (error) {
-        console.error('プロジェクトの作成に失敗しました:', error);
-      }
-    };
-
-    if (!project) {
-      // 順番にデバッグ初期化してからプロジェクト作成
-      initDebug().then(() => {
-        initProject();
-      });
-    }
+    initHybridSystem();
   }, [project, setProject]);
 
   if (!project) {
@@ -45,42 +60,70 @@ function AppContent() {
       <div className="flex items-center justify-center h-screen bg-secondary-900">
         <div className="text-center">
           <div className="text-2xl font-bold text-secondary-100 mb-4">Kinegraph</div>
-          <div className="text-secondary-400">プロジェクトを初期化中...</div>
+          <div className="text-secondary-400">ハイブリッドシステムを初期化中...</div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="h-screen bg-secondary-900 relative overflow-hidden">
-      {/* メニューバー - 上部固定 */}
-      <div className="absolute top-0 left-0 right-0 h-12 z-50 bg-secondary-800 border-b border-secondary-700 px-4 py-2 flex items-center justify-between">
-        <div className="text-lg font-semibold text-secondary-100">
-          Kinegraph - {project.name}
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm">ファイル</Button>
-          <Button variant="ghost" size="sm">編集</Button>
-          <Button variant="ghost" size="sm">表示</Button>
-          <Button variant="ghost" size="sm">ヘルプ</Button>
-        </div>
+    <div className="flex flex-col h-screen bg-secondary-900 text-secondary-100">
+      {/* ヘッダー */}
+      <header className="bg-secondary-800 p-4 shadow-lg">
+        <h1 className="text-2xl font-bold">Kinegraph - {project.name}</h1>
+      </header>
+
+      {/* メインコンテンツ */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* 左サイドバー（ツールパネル） */}
+        <aside className="w-64 bg-secondary-800 p-4 overflow-y-auto">
+          <Toolbar />
+          <div className="mt-8">
+            <h2 className="text-lg font-semibold mb-4">プロジェクト情報</h2>
+            <div className="space-y-2 text-sm">
+              <div>サイズ: {project.width} × {project.height}</div>
+              <div>フレームレート: {project.frameRate} fps</div>
+            </div>
+          </div>
+        </aside>
+
+        {/* 中央（キャンバス） */}
+        <main className="flex-1 p-4 overflow-hidden">
+          <Canvas width={project.width} height={project.height} />
+        </main>
+
+        {/* 右サイドバー（レイヤーパネル） */}
+        <aside className="w-64 bg-secondary-800 p-4 overflow-y-auto">
+          <LayerPanel />
+          <div className="mt-4 space-y-2">
+            <Button 
+              variant="secondary" 
+              size="sm" 
+              className="w-full"
+              onClick={async () => {
+                await HybridDrawingEngine.undo();
+              }}
+            >
+              Undo
+            </Button>
+            <Button 
+              variant="secondary" 
+              size="sm" 
+              className="w-full"
+              onClick={async () => {
+                await HybridDrawingEngine.redo();
+              }}
+            >
+              Redo
+            </Button>
+          </div>
+        </aside>
       </div>
 
-      {/* キャンバスエリア - 全画面表示（メニューバーとタイムラインを除く） */}
-      <div className="absolute top-12 left-0 right-0 bottom-32 bg-secondary-900">
-        <Canvas width={project.width} height={project.height} />
-      </div>
-
-      {/* タイムライン - 下部固定 */}
-      <div className="absolute bottom-0 left-0 right-0 h-32 z-50 bg-secondary-800 border-t border-secondary-700">
+      {/* 下部（タイムライン） */}
+      <footer className="h-48 bg-secondary-800 border-t border-secondary-700">
         <Timeline />
-      </div>
-
-      {/* ツールバー - 左側固定 */}
-      <Toolbar />
-
-      {/* レイヤーパネル - 右側固定 */}
-      <LayerPanel />
+      </footer>
     </div>
   );
 }

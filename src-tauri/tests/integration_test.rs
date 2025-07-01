@@ -35,7 +35,7 @@ async fn test_drawing_engine_initialization() {
             assert!(engine.device.is_none());
             assert!(engine.queue.is_none());
             assert!(engine.adapter.is_none());
-            println!("Expected GPU initialization error: {}", e);
+            println!("Expected GPU initialization error: {e}");
         }
     }
 }
@@ -52,7 +52,7 @@ async fn test_state_not_managed_error_simulation() {
     assert!(error_message.contains("state not managed"));
     assert!(error_message.contains("drawingEngine"));
     
-    println!("State management error pattern verified: {}", error_message);
+    println!("State management error pattern verified: {error_message}");
 }
 
 #[tokio::test]
@@ -67,7 +67,7 @@ async fn test_get_system_info_command() {
     assert!(info.contains("React"));
     assert!(info.contains("jotai"));
     
-    println!("System info: {}", info);
+    println!("System info: {info}");
 }
 
 #[tokio::test]
@@ -85,7 +85,7 @@ async fn test_project_creation() {
     
     assert_project_properties(&project, "Test Animation", UHD_WIDTH, UHD_HEIGHT, HIGH_FRAME_RATE);
     
-    println!("Project created: {:?}", project);
+    println!("Project created: {project:?}");
 }
 
 #[tokio::test]
@@ -98,7 +98,7 @@ async fn test_concurrent_state_access() {
         tokio::spawn(async move {
             let _guard = state_clone.lock().await;
             // 状態に安全にアクセスできることを確認
-            println!("Task {} accessed state successfully", i);
+            println!("Task {i} accessed state successfully");
             i
         })
     }).collect();
@@ -150,7 +150,7 @@ async fn test_state_management_error_patterns() {
     
     for pattern in expected_error_patterns {
         assert!(!pattern.is_empty());
-        println!("Verified error pattern: {}", pattern);
+        println!("Verified error pattern: {pattern}");
     }
     
     // lib.rsでの正しい状態管理パターンの確認
@@ -187,7 +187,7 @@ mod performance_tests {
         }
         
         let duration = start.elapsed();
-        println!("1000 state accesses took: {:?}", duration);
+        println!("1000 state accesses took: {duration:?}");
         
         // パフォーマンス閾値（調整可能）
         assert!(duration.as_millis() < 5000, "State access should be reasonably fast");
@@ -202,7 +202,7 @@ mod performance_tests {
         
         for i in 0..100 {
             let project = create_test_project(
-                &format!("Memory Test Project {}", i),
+                &format!("Memory Test Project {i}"),
                 DEFAULT_WIDTH,
                 DEFAULT_HEIGHT,
                 DEFAULT_FRAME_RATE

@@ -71,7 +71,7 @@ async fn test_incorrect_state_management_simulation() {
     // パターン1: 状態管理エラーメッセージの検証
     let error_message = "state not managed for field `drawingEngine`";
     
-    println!("Expected error message: '{}'", error_message);
+    println!("Expected error message: '{error_message}'");
     assert!(error_message.contains("state not managed"));
     assert!(error_message.contains("drawingEngine"));
     

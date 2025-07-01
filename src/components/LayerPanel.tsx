@@ -4,7 +4,6 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { projectAtom, currentFrameAtom, selectedLayerAtom, Layer } from '../store/atoms.ts';
 import { Button } from './Button.tsx';
 import { useLayerManagement } from '../lib/useLayerManagement.ts';
-import { invoke } from '@tauri-apps/api/core';
 
 // アイコンコンポーネント
 const EyeIcon = ({ visible }: { visible: boolean }) => (
@@ -55,8 +54,9 @@ const LayerThumbnail = ({ layerId }: { layerId: string }) => {
       if (!canvas || !layerId) return;
       
       try {
-        // Tauri APIを使用してレイヤーのサムネイルデータを取得
-        const imageData = await invoke<number[]>('get_layer_image_data', { layerId });
+        // TODO: ハイブリッドシステムでのサムネイル取得を実装
+        // 現在は仮のデータを使用
+        const imageData: number[] = [];
         
         // Canvasに描画
         const ctx = canvas.getContext('2d');
@@ -174,11 +174,10 @@ export function LayerPanel() {
       // Rustエンジンでテクスチャ作成
       console.log(`🦀 Rustエンジンでテクスチャ作成開始: ${newLayerId} (${project.width}x${project.height})`);
       // Tauri APIを直接呼び出してレイヤーを作成
-      await invoke('create_drawing_layer', {
-        layerId: newLayerId,
-        width: project.width,
-        height: project.height
-      });
+      const result = await commands.createDrawingLayer(newLayerId, project.width, project.height);
+      if (result.status === 'error') {
+        throw new Error(result.error);
+      }
       console.log('✅ Rustエンジンテクスチャ作成完了');
       
       // プロジェクト状態を更新
@@ -238,7 +237,10 @@ export function LayerPanel() {
     try {
       // Rustエンジンからテクスチャを削除
       // Tauri APIを直接呼び出してレイヤーを削除
-      await invoke('remove_layer', { layerId });
+      const result = await commands.removeLayer(layerId);
+      if (result.status === 'error') {
+        throw new Error(result.error);
+      }
       
       // プロジェクト状態を更新
       const updatedProject = { ...project };

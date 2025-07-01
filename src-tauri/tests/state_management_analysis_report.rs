@@ -17,7 +17,7 @@ async fn test_comprehensive_state_management_analysis() {
     // 1. エラーメッセージの特定
     println!("\n1. エラーメッセージ分析:");
     let error_message = "state not managed for field `drawingEngine`";
-    println!("   エラー: {}", error_message);
+    println!("   エラー: {error_message}");
     println!("   発生箇所: Tauriコマンド実行時");
     println!("   原因: .manage()メソッドが呼ばれていない");
     
@@ -61,9 +61,9 @@ async fn test_comprehensive_state_management_analysis() {
         match result {
             Ok(value) => {
                 assert_eq!(*value, i);
-                println!("   ✓ タスク{}: 並行アクセス成功", i);
+                println!("   ✓ タスク{i}: 並行アクセス成功");
             },
-            Err(e) => panic!("タスク{}が失敗: {:?}", i, e),
+            Err(e) => panic!("タスク{i}が失敗: {e:?}"),
         }
     }
     
@@ -121,12 +121,10 @@ async fn test_error_condition_simulation() {
     
     // シナリオ3: エラーメッセージパターン
     println!("\nシナリオ3: エラーメッセージパターン");
-    let error_patterns = vec![
-        "state not managed for field `drawingEngine`",
+    let error_patterns = ["state not managed for field `drawingEngine`",
         "Failed to find an appropriate adapter",
         "Surface creation failed",
-        "No suitable graphics adapter found",
-    ];
+        "No suitable graphics adapter found"];
     
     for (i, pattern) in error_patterns.iter().enumerate() {
         println!("  パターン{}: {}", i + 1, pattern);
@@ -151,7 +149,7 @@ async fn test_performance_and_stability() {
     }
     
     let duration = start.elapsed();
-    println!("   10,000回の状態アクセス: {:?}", duration);
+    println!("   10,000回の状態アクセス: {duration:?}");
     println!("   平均アクセス時間: {:?}/回", duration / 10000);
     
     // メモリ安定性テスト
@@ -190,7 +188,7 @@ async fn test_performance_and_stability() {
     let results: Vec<_> = futures::future::join_all(concurrent_tasks).await;
     let concurrent_duration = start_concurrent.elapsed();
     
-    println!("   50タスク x 100アクセス: {:?}", concurrent_duration);
+    println!("   50タスク x 100アクセス: {concurrent_duration:?}");
     println!("   ✓ 全タスク完了: {}/50", results.len());
     
     for result in results {
