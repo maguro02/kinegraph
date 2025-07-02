@@ -1,0 +1,17 @@
+# WASM build artifacts
+/target/
+/pkg/
+/wasm-pack.log
+
+# Cargo lock file (optional, can be committed for reproducible builds)
+# Cargo.lock
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
