@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 
 /// ユーザー操作を表す入力コマンド
 #[derive(Debug, Deserialize, Clone)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 #[serde(tag = "type", content = "payload")]
 pub enum UserInput {
     /// ストロークを描画
@@ -22,22 +23,23 @@ pub enum UserInput {
     /// レイヤーの不透明度を変更
     ChangeLayerOpacity { layer_id: String, opacity: f32 },
     /// レイヤーのブレンドモードを変更
-    ChangeLayerBlendMode { layer_id: String, blend_mode: String },
+    ChangeLayerBlendMode {
+        layer_id: String,
+        blend_mode: String,
+    },
     /// 塗りつぶし
-    Fill { 
-        point: Point, 
+    Fill {
+        point: Point,
         color: String,
         layer_id: String,
     },
     /// 選択範囲を作成
-    CreateSelection { 
+    CreateSelection {
         selection_type: SelectionType,
         points: Vec<Point>,
     },
     /// 選択範囲を変形
-    TransformSelection {
-        transform: Transform,
-    },
+    TransformSelection { transform: Transform },
     /// Undo操作
     Undo,
     /// Redo操作
@@ -46,36 +48,30 @@ pub enum UserInput {
 
 /// 描画コマンド（フロントエンドへの描画指示）
 #[derive(Debug, Serialize, Clone)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 #[serde(tag = "type", content = "payload")]
 pub enum DrawCommand {
     /// キャンバス全体をクリア
     ClearCanvas,
     /// パスを描画
-    DrawPath { 
-        points: Vec<Point>, 
-        color: String, 
+    DrawPath {
+        points: Vec<Point>,
+        color: String,
         width: f32,
         layer_id: String,
     },
     /// 矩形領域を更新（部分的なラスターデータ更新用）
-    UpdateRasterArea { 
-        rect: Rect, 
+    UpdateRasterArea {
+        rect: Rect,
         pixel_data: Vec<u8>,
         layer_id: String,
     },
     /// レイヤーを追加
-    AddLayer {
-        layer_id: String,
-        index: usize,
-    },
+    AddLayer { layer_id: String, index: usize },
     /// レイヤーを削除
-    RemoveLayer {
-        layer_id: String,
-    },
+    RemoveLayer { layer_id: String },
     /// レイヤーの順序を変更
-    ReorderLayers {
-        layer_ids: Vec<String>,
-    },
+    ReorderLayers { layer_ids: Vec<String> },
     /// レイヤーのプロパティを更新
     UpdateLayerProperties {
         layer_id: String,
@@ -96,13 +92,12 @@ pub enum DrawCommand {
         transform: Transform,
     },
     /// 複数のコマンドをバッチ実行
-    Batch {
-        commands: Vec<DrawCommand>,
-    },
+    Batch { commands: Vec<DrawCommand> },
 }
 
 /// 2D座標
 #[derive(Debug, Serialize, Deserialize, Clone, Copy)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 pub struct Point {
     pub x: f64,
     pub y: f64,
@@ -110,6 +105,7 @@ pub struct Point {
 
 /// 矩形領域
 #[derive(Debug, Serialize, Clone)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 pub struct Rect {
     pub x: u32,
     pub y: u32,
@@ -119,6 +115,7 @@ pub struct Rect {
 
 /// 選択範囲のタイプ
 #[derive(Debug, Serialize, Deserialize, Clone)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub enum SelectionType {
     Rectangle,
@@ -128,6 +125,7 @@ pub enum SelectionType {
 
 /// 変形情報
 #[derive(Debug, Serialize, Deserialize, Clone)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 pub struct Transform {
     pub translate_x: f64,
     pub translate_y: f64,
@@ -146,4 +144,22 @@ impl Default for Transform {
             rotation: 0.0,
         }
     }
+}
+
+/// レイヤー作成のレスポンス
+#[derive(serde::Serialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
+pub struct CreateLayerResponse {
+    pub status: String,
+    pub layer_id: String,
+    pub commands: Vec<DrawCommand>,
+}
+
+/// レイヤー削除のレスポンス
+#[derive(serde::Serialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
+pub struct RemoveLayerResponse {
+    pub status: String,
+    pub removed_layer_id: String,
+    pub commands: Vec<DrawCommand>,
 }

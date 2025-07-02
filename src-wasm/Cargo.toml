@@ -1,0 +1,53 @@
+[package]
+name = "kinegraph-wasm"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+wasm-bindgen = "0.2.95"
+wasm-bindgen-futures = "0.4.45"
+js-sys = "0.3.72"
+wgpu = { version = "23.0", features = ["webgl", "webgpu"] }
+web-sys = { version = "0.3.72", features = [
+    "console",
+    "Document",
+    "Element",
+    "HtmlCanvasElement",
+    "OffscreenCanvas",
+    "OffscreenCanvasRenderingContext2d",
+    "ImageData",
+    "Window",
+    "Navigator",
+    "WorkerGlobalScope",
+    "DedicatedWorkerGlobalScope",
+    "MessageEvent",
+    "CanvasRenderingContext2d",
+    "ImageBitmap",
+    "Performance",
+] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+serde-wasm-bindgen = "0.6"
+bytemuck = { version = "1.19", features = ["derive"] }
+log = "0.4"
+console_error_panic_hook = { version = "0.1", optional = true }
+console_log = "1.0"
+
+[dev-dependencies]
+wasm-bindgen-test = "0.3"
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
+
+[features]
+default = ["console_error_panic_hook"]
+
+[package.metadata.wasm-pack]
+wasm-opt = false

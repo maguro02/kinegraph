@@ -1,12 +1,44 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
+import wasm from "vite-plugin-wasm";
+import topLevelAwait from "vite-plugin-top-level-await";
 
 const host = process.env.TAURI_DEV_HOST;
 
 // https://vitejs.dev/config/
 export default defineConfig(async () => ({
-    plugins: [react(), tailwindcss()],
+    plugins: [react(), tailwindcss(), wasm(), topLevelAwait()],
+    
+    // WASM対応設定（vite-plugin-wasmが処理するため簡略化）
+    optimizeDeps: {
+        esbuildOptions: {
+            target: 'esnext',
+        },
+    },
+    
+    // Worker設定
+    worker: {
+        format: 'es' as const,
+    },
+    
+    // public directoryの設定
+    publicDir: 'public',
+    
+    build: {
+        target: 'esnext',
+        // WASMファイルをassets/wasmディレクトリに配置
+        rollupOptions: {
+            output: {
+                assetFileNames: (assetInfo: any) => {
+                    if (assetInfo.name?.endsWith('.wasm')) {
+                        return 'assets/wasm/[name]-[hash][extname]';
+                    }
+                    return 'assets/[name]-[hash][extname]';
+                },
+            },
+        },
+    },
 
     // CSS最適化設定
     css: {
@@ -59,5 +91,16 @@ export default defineConfig(async () => ({
             // 3. tell vite to ignore watching `src-tauri`
             ignored: ["**/src-tauri/**"],
         },
+        // Cross-Origin Isolation設定（SharedArrayBuffer等を使用するWASMモジュール用）
+        headers: {
+            'Cross-Origin-Embedder-Policy': 'require-corp',
+            'Cross-Origin-Opener-Policy': 'same-origin',
+        },
+        // WASMファイルの配信設定
+    },
+    
+    // MIMEタイプの設定
+    define: {
+        'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'development'),
     },
 }));

@@ -7,7 +7,7 @@ import { Timeline } from './components/Timeline';
 import { Button } from './components/Button';
 import { Toolbar } from './components/Toolbar';
 import { LayerPanel } from './components/LayerPanel';
-import { HybridDrawingEngine } from './lib/hybridDrawingEngine';
+import { initializeDebugLogging, getDrawingState, processUserInput } from './lib/tauri';
 
 function AppContent() {
   const [project, setProject] = useAtom(projectAtom);
@@ -17,7 +17,10 @@ function AppContent() {
     // 初期状態を取得
     const initHybridSystem = async () => {
       try {
-        const state = await HybridDrawingEngine.getDrawingState();
+        // デバッグログを初期化
+        await initializeDebugLogging();
+        
+        const state = await getDrawingState();
         console.log("[App] ハイブリッドシステム初期状態:", state);
         
         // プロジェクトのダミーデータを設定（既存のコンポーネントとの互換性のため）
@@ -32,7 +35,7 @@ function AppContent() {
               {
                 id: 'frame-1',
                 duration: 1,
-                layers: state.layers.map(l => ({
+                layers: state.layers.map((l: any) => ({
                   id: l.id,
                   name: l.name,
                   visible: l.visible,
@@ -89,7 +92,14 @@ function AppContent() {
 
         {/* 中央（キャンバス） */}
         <main className="flex-1 p-4 overflow-hidden">
-          <Canvas width={project.width} height={project.height} />
+          <div className="flex flex-col items-center justify-center h-full">
+            <div className="mb-4">
+              <Canvas 
+                width={Math.min(project.width, 1920)} 
+                height={Math.min(project.height, 1080)} 
+              />
+            </div>
+          </div>
         </main>
 
         {/* 右サイドバー（レイヤーパネル） */}
@@ -101,7 +111,7 @@ function AppContent() {
               size="sm" 
               className="w-full"
               onClick={async () => {
-                await HybridDrawingEngine.undo();
+                await processUserInput({ type: 'Undo', payload: {} });
               }}
             >
               Undo
@@ -111,7 +121,7 @@ function AppContent() {
               size="sm" 
               className="w-full"
               onClick={async () => {
-                await HybridDrawingEngine.redo();
+                await processUserInput({ type: 'Redo', payload: {} });
               }}
             >
               Redo

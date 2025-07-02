@@ -10,11 +10,16 @@
     "tauri": "tauri",
     "test": "vitest",
     "test:run": "vitest run",
-    "test:ui": "vitest --ui"
+    "test:ui": "vitest --ui",
+    "wasm:build": "cd src-wasm && ./build.sh",
+    "wasm:dev": "cd src-wasm && cargo watch -s './build.sh'",
+    "wasm:check": "cd src-wasm && cargo check",
+    "wasm:test": "cd src-wasm && wasm-pack test --headless --chrome"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.1.11",
     "@types/node": "^24.0.7",
+    "@webgpu/types": "^0.1.63",
     "autoprefixer": "^10.4.21",
     "jotai": "^2.12.5",
     "react": "^19.1.0",
@@ -30,6 +35,8 @@
     "typescript": "^5.8.3",
     "vite": "^7.0.0",
     "@tauri-apps/cli": "^2",
+    "vite-plugin-top-level-await": "^1.5.0",
+    "vite-plugin-wasm": "^3.4.1",
     "vitest": "^2.1.8",
     "@vitest/ui": "^2.1.8",
     "jsdom": "^25.0.0",

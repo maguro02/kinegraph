@@ -8,7 +8,6 @@ pub mod api {
     include!("../api/mod.rs");
 }
 
-
 pub mod state {
     include!("../state/mod.rs");
 }
@@ -16,7 +15,7 @@ pub mod state {
 #[cfg(feature = "specta")]
 pub mod tauri_bindings;
 
-use log::{info, error, debug};
+use log::{debug, error, info};
 
 // greet function commented out due to macro conflict
 
@@ -28,37 +27,38 @@ pub fn run() {
         .format_timestamp_secs()
         .format_module_path(true)
         .init();
-    
+
     info!("[KINEGRAPH] アプリケーション起動開始");
-    
-    
+
     // ハイブリッド描画エンジンの状態管理
     debug!("[KINEGRAPH] HybridDrawingState 初期化中...");
     let hybrid_drawing_state = api::HybridDrawingState::new();
     debug!("[KINEGRAPH] HybridDrawingState 初期化完了");
-    
+
     // Tauri状態管理に登録
     debug!("[KINEGRAPH] Tauri Builder 初期化中...");
-    let builder = tauri::Builder::default()
-        .plugin(tauri_plugin_opener::init());
-    
+    let builder = tauri::Builder::default().plugin(tauri_plugin_opener::init());
+
     debug!("[KINEGRAPH] HybridDrawingState を Tauri 状態管理に登録中...");
     let builder = builder.manage(hybrid_drawing_state);
     debug!("[KINEGRAPH] HybridDrawingState 状態管理登録完了");
-    
+
     debug!("[KINEGRAPH] Tauri invoke_handler 登録中...");
-    
+
     let builder = builder.invoke_handler(tauri::generate_handler![
         // システム情報
         api::get_system_info,
-        
         // ハイブリッド描画API
         api::process_user_input,
-        api::get_drawing_state
+        api::get_drawing_state,
+        api::initialize_drawing_engine,
+        // レイヤー管理API
+        api::create_drawing_layer,
+        api::remove_layer
     ]);
-    
+
     debug!("[KINEGRAPH] invoke_handler 登録完了");
-    
+
     info!("[KINEGRAPH] Tauri アプリケーション実行開始");
     match builder.run(tauri::generate_context!()) {
         Ok(_) => info!("[KINEGRAPH] アプリケーション正常終了"),

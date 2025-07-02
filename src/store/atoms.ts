@@ -31,6 +31,15 @@ export type JointType =
   | { type: 'round'; segments: number }
   | { type: 'bevel' };
 
+// ブラシ設定
+export interface BrushSettings {
+  size: number;
+  opacity: number;
+  color: string;
+  hardness: number;
+  spacing: number;
+}
+
 // アトム定義
 export const projectAtom = atom<Project | null>(null);
 export const currentFrameIndexAtom = atom<number>(0);
@@ -39,6 +48,23 @@ export const toolAtom = atom<'pen' | 'eraser' | 'bucket' | 'select'>('pen');
 export const brushSizeAtom = atom<number>(5);
 export const colorAtom = atom<string>('#000000');
 export const jointTypeAtom = atom<JointType>({ type: 'round', segments: 8 });
+
+// 新しいアトム
+export const currentLayerIdAtom = atom<string>('layer-1');
+export const activeLayerIdAtom = atom<string>('default-layer');
+export const brushSettingsAtom = atom<BrushSettings>({
+  size: 5,
+  opacity: 1,
+  color: '#000000',
+  hardness: 0.8,
+  spacing: 0.1,
+});
+
+// 描画エンジンの種類
+export type DrawingEngineType = 'canvas2d' | 'wasm' | 'wasmWorker';
+
+// 描画エンジン選択アトム
+export const drawingEngineAtom = atom<DrawingEngineType>('wasmWorker');
 
 // 計算されたアトム
 export const currentFrameAtom = atom((get) => {

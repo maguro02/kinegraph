@@ -1,5 +1,5 @@
 import { useAtom } from 'jotai';
-import { toolAtom, brushSizeAtom, colorAtom, jointTypeAtom, type JointType } from '../store/atoms';
+import { toolAtom, brushSizeAtom, colorAtom, jointTypeAtom, drawingEngineAtom } from '../store/atoms';
 import { Button } from './Button';
 
 // アイコンコンポーネント（簡易版）
@@ -32,6 +32,7 @@ export function Toolbar() {
   const [brushSize, setBrushSize] = useAtom(brushSizeAtom);
   const [color, setColor] = useAtom(colorAtom);
   const [jointType, setJointType] = useAtom(jointTypeAtom);
+  const [drawingEngine, setDrawingEngine] = useAtom(drawingEngineAtom);
 
   const tools = [
     { id: 'pen' as const, icon: <PenIcon />, label: 'ペン' },
@@ -159,6 +160,45 @@ export function Toolbar() {
             </div>
           )}
         </div>
+        
+        {/* 区切り線 */}
+        <div className="border-t border-secondary-700"></div>
+        
+        {/* 描画エンジン選択（開発時のみ） */}
+        {process.env.NODE_ENV === 'development' && (
+          <div className="flex flex-col gap-2">
+            <label className="text-xs text-secondary-300 text-center">描画エンジン</label>
+            <div className="flex flex-col gap-1">
+              <button
+                onClick={() => setDrawingEngine('canvas2d')}
+                className={`px-2 py-1 text-xs rounded ${
+                  drawingEngine === 'canvas2d' ? 'bg-primary-600 text-white' : 'bg-secondary-700 text-secondary-300 hover:bg-secondary-600'
+                }`}
+                title="Canvas 2D API"
+              >
+                Canvas2D
+              </button>
+              <button
+                onClick={() => setDrawingEngine('wasm')}
+                className={`px-2 py-1 text-xs rounded ${
+                  drawingEngine === 'wasm' ? 'bg-primary-600 text-white' : 'bg-secondary-700 text-secondary-300 hover:bg-secondary-600'
+                }`}
+                title="WASM ダイレクト"
+              >
+                WASM
+              </button>
+              <button
+                onClick={() => setDrawingEngine('wasmWorker')}
+                className={`px-2 py-1 text-xs rounded ${
+                  drawingEngine === 'wasmWorker' ? 'bg-primary-600 text-white' : 'bg-secondary-700 text-secondary-300 hover:bg-secondary-600'
+                }`}
+                title="WASM Worker"
+              >
+                WASM Worker
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

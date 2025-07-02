@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WASM Memory Test</title>
+</head>
+<body>
+    <h1>WASM Memory Management Test</h1>
+    <div id="output" style="font-family: monospace; white-space: pre; background: #f0f0f0; padding: 10px;"></div>
+    
+    <script type="module">
+        const output = document.getElementById('output');
+        const log = (msg) => {
+            console.log(msg);
+            output.textContent += msg + '\n';
+        };
+        
+        try {
+            log('=== WASM Memory Management Test ===');
+            
+            // WASMモジュールをインポート
+            const wasmModule = await import('./public/wasm/kinegraph_wasm.js');
+            
+            log('\n1. WASM exports before init: ' + JSON.stringify(Object.keys(wasmModule)));
+            log('   - DrawingContext: ' + typeof wasmModule.DrawingContext);
+            
+            // 初期化
+            if (wasmModule.default) {
+                log('\n2. Initializing WASM module...');
+                await wasmModule.default();
+                log('   - Initialization complete');
+            }
+            
+            // DrawingContextのテスト
+            if (wasmModule.DrawingContext) {
+                log('\n3. Creating DrawingContext...');
+                try {
+                    const context = await new wasmModule.DrawingContext(800, 600);
+                    log('   - DrawingContext created successfully');
+                    log('   - Methods: ' + Object.getOwnPropertyNames(Object.getPrototypeOf(context)));
+                    
+                    // draw_strokeのテスト
+                    log('\n4. Testing draw_stroke...');
+                    const points = new Float32Array([100, 100, 200, 200]);
+                    const color = new Float32Array([1, 0, 0, 1]);
+                    
+                    log('   - Points: ' + Array.from(points));
+                    log('   - Color: ' + Array.from(color));
+                    
+                    try {
+                        context.draw_stroke(points, color, 5);
+                        log('   - draw_stroke SUCCESS!');
+                    } catch (err) {
+                        log('   - draw_stroke ERROR: ' + err.message);
+                        log('   - Stack: ' + err.stack);
+                    }
+                    
+                    // clear のテスト
+                    log('\n5. Testing clear...');
+                    try {
+                        context.clear(new Float32Array([1, 1, 1, 1]));
+                        log('   - clear SUCCESS!');
+                    } catch (err) {
+                        log('   - clear ERROR: ' + err.message);
+                    }
+                    
+                } catch (err) {
+                    log('   - ERROR creating DrawingContext: ' + err.message);
+                    log('   - Stack: ' + err.stack);
+                }
+            }
+            
+        } catch (error) {
+            log('\nFATAL ERROR: ' + error.message);
+            log('Stack: ' + error.stack);
+        }
+    </script>
+</body>
+</html>

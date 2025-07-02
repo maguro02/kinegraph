@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WebGPU Stroke Rendering Test</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+        }
+        #status {
+            margin-bottom: 10px;
+            padding: 10px;
+            background: #f0f0f0;
+            border-radius: 5px;
+        }
+        #controls {
+            margin-bottom: 10px;
+        }
+        button {
+            margin-right: 10px;
+            padding: 5px 10px;
+        }
+        canvas {
+            border: 1px solid #ccc;
+            display: block;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>WebGPU Stroke Rendering Test</h1>
+    <div id="status">Checking WebGPU support...</div>
+    <div id="controls">
+        <button id="drawLineBtn">Draw Line</button>
+        <button id="drawCurveBtn">Draw Curve</button>
+        <button id="clearBtn">Clear</button>
+    </div>
+    <canvas id="canvas" width="800" height="600"></canvas>
+
+    <script type="module">
+        async function init() {
+            const statusEl = document.getElementById('status');
+            
+            // Check WebGPU support
+            if (!navigator.gpu) {
+                statusEl.textContent = 'WebGPU is not supported in this browser.';
+                statusEl.style.background = '#ffcccc';
+                return;
+            }
+            
+            statusEl.textContent = 'WebGPU is supported! Loading WASM module...';
+            
+            try {
+                // Load the WASM module (this would be the actual built module)
+                // For testing purposes, we'll create a mock implementation
+                const canvas = document.getElementById('canvas');
+                const ctx = canvas.getContext('2d');
+                
+                // Mock drawing functions for testing
+                const drawStroke = (points, color, width) => {
+                    if (points.length < 2) return;
+                    
+                    ctx.strokeStyle = `rgba(${color[0] * 255}, ${color[1] * 255}, ${color[2] * 255}, ${color[3]})`;
+                    ctx.lineWidth = width;
+                    ctx.lineCap = 'round';
+                    ctx.lineJoin = 'round';
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(points[0], points[1]);
+                    
+                    for (let i = 2; i < points.length; i += 2) {
+                        ctx.lineTo(points[i], points[i + 1]);
+                    }
+                    
+                    ctx.stroke();
+                };
+                
+                const clear = (color) => {
+                    ctx.fillStyle = `rgba(${color[0] * 255}, ${color[1] * 255}, ${color[2] * 255}, ${color[3]})`;
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                };
+                
+                // Button handlers
+                document.getElementById('drawLineBtn').addEventListener('click', () => {
+                    const points = [100, 100, 300, 300, 500, 200];
+                    const color = [1.0, 0.0, 0.0, 1.0]; // Red
+                    drawStroke(points, color, 5);
+                });
+                
+                document.getElementById('drawCurveBtn').addEventListener('click', () => {
+                    const points = [];
+                    for (let i = 0; i < 50; i++) {
+                        const x = 100 + i * 10;
+                        const y = 300 + Math.sin(i * 0.2) * 100;
+                        points.push(x, y);
+                    }
+                    const color = [0.0, 0.0, 1.0, 1.0]; // Blue
+                    drawStroke(points, color, 3);
+                });
+                
+                document.getElementById('clearBtn').addEventListener('click', () => {
+                    clear([1.0, 1.0, 1.0, 1.0]); // White
+                });
+                
+                statusEl.textContent = 'Ready! (Using Canvas 2D fallback for demonstration)';
+                statusEl.style.background = '#ccffcc';
+                
+                // Initial clear
+                clear([1.0, 1.0, 1.0, 1.0]);
+                
+            } catch (error) {
+                statusEl.textContent = `Error: ${error.message}`;
+                statusEl.style.background = '#ffcccc';
+            }
+        }
+        
+        init();
+    </script>
+</body>
+</html>

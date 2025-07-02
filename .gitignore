@@ -23,8 +23,14 @@ dist-ssr
 *.sln
 *.sw?
 
-.claude
-CLAUDE.md
-
 # Temporary files
 .temp/
+
+# WASM build artifacts
+*.wasm
+*.wasm.map
+wasm-build/
+.wasm-cache/
+pkg/
+target/wasm32-unknown-unknown/
+target/wasm32-wasi/

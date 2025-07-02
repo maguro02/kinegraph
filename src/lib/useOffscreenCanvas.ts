@@ -4,7 +4,9 @@
  */
 
 import { useEffect, useRef, useCallback, useState } from 'react';
-import type { DrawCommand } from './offscreenCanvasWorker';
+
+// TODO: 現在のDrawCommand型に合わせて再実装が必要
+type DrawCommand = any;
 
 interface UseOffscreenCanvasOptions {
     width: number;

@@ -1,4 +1,4 @@
-import type { DrawCommand, Point, Rect, Transform } from "../hybridCommands";
+import type { DrawCommand, Point, Rect, Transform } from "../bindings";
 
 /**
  * 描画レンダラーのインターフェース
