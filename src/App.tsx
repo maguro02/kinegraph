@@ -111,7 +111,7 @@ function AppContent() {
               size="sm" 
               className="w-full"
               onClick={async () => {
-                await processUserInput({ type: 'Undo', payload: {} });
+                await processUserInput({ type: 'Undo' });
               }}
             >
               Undo
@@ -121,7 +121,7 @@ function AppContent() {
               size="sm" 
               className="w-full"
               onClick={async () => {
-                await processUserInput({ type: 'Redo', payload: {} });
+                await processUserInput({ type: 'Redo' });
               }}
             >
               Redo

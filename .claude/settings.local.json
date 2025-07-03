@@ -44,7 +44,8 @@
       "Bash(wasm-objdump:*)",
       "Bash(wasm-pack build:*)",
       "Bash(node:*)",
-      "Bash(mv:*)"
+      "Bash(mv:*)",
+      "Bash(mkdir:*)"
     ],
     "deny": []
   }

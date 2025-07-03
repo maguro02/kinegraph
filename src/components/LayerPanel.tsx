@@ -1,10 +1,11 @@
 import React from "react";
 import { useAtom } from "jotai";
 import { useState, useCallback, useEffect, useRef } from "react";
-import { projectAtom, currentFrameAtom, selectedLayerAtom, Layer } from "../store/atoms.ts";
+import { projectAtom, currentFrameAtom, selectedLayerAtom, Layer, drawingEngineAtom } from "../store/atoms.ts";
 import { Button } from "./Button.tsx";
 import { useLayerManagement } from "../lib/useLayerManagement.ts";
 import { commands } from "../lib/commands";
+import { LayerPanelDrawingEngine } from "./LayerPanelDrawingEngine";
 
 // アイコンコンポーネント
 const EyeIcon = ({ visible }: { visible: boolean }) => (
@@ -117,6 +118,13 @@ const LayerThumbnail = ({ layerId }: { layerId: string }) => {
 };
 
 export function LayerPanel() {
+    const [drawingEngine] = useAtom(drawingEngineAtom);
+    
+    // Tauriエンジンを使用する場合は新しいLayerPanelを使用
+    if (drawingEngine === 'tauri') {
+        return <LayerPanelDrawingEngine />;
+    }
+    
     const [project, setProject] = useAtom(projectAtom);
     const [currentFrame] = useAtom(currentFrameAtom);
     const [selectedLayer, setSelectedLayer] = useAtom(selectedLayerAtom);

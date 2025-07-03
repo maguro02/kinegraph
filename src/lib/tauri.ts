@@ -1,5 +1,6 @@
 // 型安全なバインディングをインポート
 import { commands } from "./commands";
+import type { UserInput, DrawCommand, DrawingStateInfo, CreateLayerResponse, RemoveLayerResponse } from "./commands";
 
 /**
  * フロントエンド側のログ出力関数
@@ -37,7 +38,7 @@ export async function getSystemInfo(): Promise<string> {
             logToConsole("debug", "システム情報取得結果", result.data);
             return result.data;
         } else {
-            throw new Error(result.error || "Unknown error");
+            throw new Error((result as any).error || "Unknown error");
         }
     } catch (error) {
         logToConsole("error", "get_system_info コマンドでエラーが発生", error);
@@ -72,7 +73,7 @@ export async function initializeDrawingEngine(): Promise<string> {
             logToConsole("debug", "描画エンジン初期化結果", result.data);
             return result.data;
         } else {
-            throw new Error(result.error || "Unknown error");
+            throw new Error((result as any).error || "Unknown error");
         }
     } catch (error) {
         logToConsole("error", "initialize_drawing_engine コマンドでエラーが発生", error);
@@ -94,7 +95,7 @@ export async function initializeDrawingEngine(): Promise<string> {
 /**
  * 描画レイヤーを作成
  */
-export async function createDrawingLayer(layerId: string, width: number, height: number) {
+export async function createDrawingLayer(layerId: string, width: number, height: number): Promise<CreateLayerResponse> {
     logToConsole("info", "createDrawingLayer 関数呼び出し開始");
     logToConsole("debug", "レイヤーパラメータ", { layerId, width, height });
 
@@ -119,7 +120,7 @@ export async function createDrawingLayer(layerId: string, width: number, height:
 /**
  * レイヤーを削除
  */
-export async function removeLayer(layerId: string) {
+export async function removeLayer(layerId: string): Promise<RemoveLayerResponse> {
     logToConsole("debug", "removeLayer 関数呼び出し開始");
 
     try {
@@ -140,7 +141,7 @@ export async function removeLayer(layerId: string) {
 /**
  * 現在の描画状態を取得
  */
-export async function getDrawingState() {
+export async function getDrawingState(): Promise<DrawingStateInfo> {
     logToConsole("debug", "getDrawingState 関数呼び出し開始");
 
     try {
@@ -161,7 +162,7 @@ export async function getDrawingState() {
 /**
  * ユーザー入力を処理
  */
-export async function processUserInput(input: any) {
+export async function processUserInput(input: UserInput): Promise<DrawCommand[]> {
     logToConsole("debug", "processUserInput 関数呼び出し開始");
 
     try {

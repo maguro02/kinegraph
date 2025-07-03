@@ -2,6 +2,7 @@ import { useCallback } from "react";
 import { useCanvas } from "../lib/useCanvas";
 import { useAtom } from "jotai";
 import { toolAtom, brushSettingsAtom, drawingEngineAtom } from "../store/atoms";
+import { DrawingCanvas } from "./DrawingCanvas";
 
 interface CanvasProps {
   width: number;
@@ -10,12 +11,18 @@ interface CanvasProps {
 
 
 export function Canvas({ width, height }: CanvasProps) {
+  const [drawingEngine] = useAtom(drawingEngineAtom);
+  
+  // Tauriエンジンを使用する場合は新しいDrawingCanvasを使用
+  if (drawingEngine === 'tauri') {
+    return <DrawingCanvas width={width} height={height} />;
+  }
+  
   // 新しい統一されたCanvas描画フックを使用
   const { canvasRef, isReady, isDrawing, startDrawing, draw, endDrawing, clear } = useCanvas({ width, height });
 
   const [currentTool] = useAtom(toolAtom);
   const [brushSettings] = useAtom(brushSettingsAtom);
-  const [drawingEngine] = useAtom(drawingEngineAtom);
 
   // ポインターイベントハンドラ
   const handlePointerDown = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {

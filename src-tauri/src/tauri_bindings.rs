@@ -13,6 +13,14 @@ pub fn generate_bindings() -> Result<(), Box<dyn std::error::Error>> {
             crate::api::initialize_drawing_engine,
             crate::api::create_drawing_layer,
             crate::api::remove_layer,
+            // 新しい描画エンジンAPI
+            crate::ipc::init_canvas,
+            crate::ipc::draw_command,
+            crate::ipc::get_render_result,
+            crate::ipc::resize_canvas,
+            crate::ipc::get_compressed_render_result,
+            crate::ipc::get_diff_render_result,
+            crate::ipc::clear_render_cache,
         ])
         .export(config, "../src/lib/bindings.ts")?;
     Ok(())
