@@ -32,6 +32,7 @@
 - lz4 1.28 (高速データ圧縮)
 - specta 2.0.0-rc.20 (型生成)
 - tauri-specta 2.0.0-rc.20 (Tauri型安全性)
+- bincode 1.3 (高速バイナリシリアライゼーション)
 
 **WASM描画エンジン (src-wasm/Cargo.toml)**
 - wgpu 0.20 (WebGPU/WebGL描画エンジン)
@@ -132,7 +133,7 @@
 ## アーキテクチャ
 
 ### 描画エンジン
-現在の実装では、TauriのRustプロセスでwgpuを使用した描画エンジンが動作しています。
+現在の実装では、TauriのRustプロセスでwgpuを使用した描画エンジンが動作しています。パフォーマンス向上のため、JSON形式に加えてバイナリプロトコルによる高速通信も実装されています。
 
 #### ディレクトリ構造
 ```
@@ -142,14 +143,18 @@ src-tauri/src/
 │   ├── renderer.rs     # wgpuレンダラー
 │   ├── canvas_state.rs # キャンバス状態管理
 │   ├── layer.rs        # レイヤー管理
-│   ├── commands.rs     # 描画コマンド定義
+│   ├── commands.rs     # 描画コマンド定義（DrawEngineCommand）
 │   ├── buffer.rs       # バッファ管理
 │   ├── stroke.rs       # ストローク処理
-│   └── compositor.rs   # レイヤー合成
+│   ├── compositor.rs   # レイヤー合成
+│   └── worker.rs       # ワーカースレッドプール
 └── ipc/                # IPC通信
     ├── handlers.rs     # コマンドハンドラー
     ├── binary.rs       # バイナリデータ転送
-    └── diff_handlers.rs # 差分更新処理
+    ├── diff_handlers.rs # 差分更新処理
+    ├── binary_protocol.rs # バイナリプロトコル定義
+    ├── binary_handlers.rs # バイナリ通信ハンドラー
+    └── image_stream.rs    # 画像ストリーミング
 ```
 
 #### 主要機能
@@ -158,11 +163,17 @@ src-tauri/src/
 3. **レイヤー合成**: 最大10レイヤーの効率的な合成
 4. **差分更新**: 変更領域のみの転送による高速更新
 5. **データ圧縮**: LZ4による転送データの圧縮
+6. **バイナリ通信**: JSON形式に加えてバイナリプロトコルによる高速IPC通信
+7. **バッチ処理**: 複数の描画コマンドをまとめて処理し、IPCオーバーヘッドを削減
+8. **ワーカースレッド**: 非同期処理による並列描画処理
 
 ### フロントエンド統合
-- **useDrawingEngine**: 描画エンジンとの通信を管理するReactフック
+- **useDrawingEngine**: 描画エンジンとの通信を管理するReactフック（バイナリ通信対応）
 - **DrawingCanvas**: Tauri描画エンジンを使用するキャンバスコンポーネント
 - **LayerPanelDrawingEngine**: レイヤー管理UI
+- **DrawCommandBatcher**: 描画コマンドのバッチ処理クラス
+- **BinaryProtocol**: バイナリ通信プロトコルの実装
+- **PerformanceTest**: JSON/バイナリ通信のパフォーマンステストコンポーネント
 
 ### 描画エンジンの切り替え
 `drawingEngineAtom`の値により、以下のエンジンを切り替え可能：

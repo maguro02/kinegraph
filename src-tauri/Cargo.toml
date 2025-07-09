@@ -59,6 +59,9 @@ wgpu = { version = "0.20", features = ["webgl"] }
 bytemuck = { version = "1.16", features = ["derive"] }
 # データ圧縮用（高速バイナリ転送）
 lz4 = "1.28"
+# バイナリシリアライゼーション用
+bincode = "1.3"
+byteorder = "1.5"
 
 [dev-dependencies]
 # テスト用依存関係

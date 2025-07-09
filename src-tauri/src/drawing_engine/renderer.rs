@@ -1,6 +1,7 @@
 use wgpu::util::DeviceExt;
 use bytemuck::{Pod, Zeroable};
 use std::sync::Arc;
+use super::buffer_pool::BufferPool;
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, Pod, Zeroable)]
@@ -40,6 +41,7 @@ pub struct WgpuRenderer {
     index_buffer: wgpu::Buffer,
     pipeline: Option<wgpu::RenderPipeline>,
     texture_bind_group_layout: wgpu::BindGroupLayout,
+    buffer_pool: Arc<BufferPool>,
 }
 
 impl WgpuRenderer {
@@ -74,6 +76,9 @@ impl WgpuRenderer {
         
         let device = Arc::new(device);
         let queue = Arc::new(queue);
+        
+        // バッファプールの作成
+        let buffer_pool = Arc::new(BufferPool::new(device.clone()));
         
         // 頂点バッファの作成
         let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -119,6 +124,7 @@ impl WgpuRenderer {
             index_buffer,
             pipeline: None,
             texture_bind_group_layout,
+            buffer_pool,
         })
     }
     
@@ -170,14 +176,9 @@ impl WgpuRenderer {
         width: u32,
         height: u32,
     ) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
-        // 出力バッファの作成
+        // 出力バッファをプールから取得
         let buffer_size = (width * height * 4) as u64;
-        let output_buffer = self.device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("Output Buffer"),
-            size: buffer_size,
-            usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
-            mapped_at_creation: false,
-        });
+        let output_buffer = self.buffer_pool.get_buffer(buffer_size);
         
         // コマンドエンコーダーの作成
         let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
@@ -225,6 +226,9 @@ impl WgpuRenderer {
         
         drop(data);
         output_buffer.unmap();
+        
+        // バッファをプールに返却
+        self.buffer_pool.return_buffer(output_buffer, buffer_size);
         
         Ok(result)
     }

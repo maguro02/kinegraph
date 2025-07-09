@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Provider } from 'jotai';
 import { useAtom } from 'jotai';
 import { projectAtom } from './store/atoms';
@@ -7,10 +7,12 @@ import { Timeline } from './components/Timeline';
 import { Button } from './components/Button';
 import { Toolbar } from './components/Toolbar';
 import { LayerPanel } from './components/LayerPanel';
+import { PerformanceTest } from './components/PerformanceTest';
 import { initializeDebugLogging, getDrawingState, processUserInput } from './lib/tauri';
 
 function AppContent() {
   const [project, setProject] = useAtom(projectAtom);
+  const [showPerformanceTest, setShowPerformanceTest] = useState(false);
 
   useEffect(() => {
     // ハイブリッドシステムでは、プロジェクト管理はRust側で行う
@@ -126,6 +128,14 @@ function AppContent() {
             >
               Redo
             </Button>
+            <Button 
+              variant="primary" 
+              size="sm" 
+              className="w-full"
+              onClick={() => setShowPerformanceTest(!showPerformanceTest)}
+            >
+              {showPerformanceTest ? 'パフォーマンステストを閉じる' : 'パフォーマンステスト'}
+            </Button>
           </div>
         </aside>
       </div>
@@ -134,6 +144,23 @@ function AppContent() {
       <footer className="h-48 bg-secondary-800 border-t border-secondary-700">
         <Timeline />
       </footer>
+      
+      {/* パフォーマンステストモーダル */}
+      {showPerformanceTest && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-h-[90vh] overflow-y-auto">
+            <PerformanceTest />
+            <div className="p-4 flex justify-end">
+              <Button
+                variant="secondary"
+                onClick={() => setShowPerformanceTest(false)}
+              >
+                閉じる
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

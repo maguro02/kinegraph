@@ -4,7 +4,7 @@ use tokio::sync::Mutex;
 use super::{
     renderer::WgpuRenderer,
     canvas_state::{CanvasState, CanvasId},
-    commands::{DrawCommand, BrushSettings},
+    commands::{DrawEngineCommand, BrushSettings},
     stroke::{StrokeState, draw_brush_stroke, draw_brush_point},
     compositor::Compositor,
 };
@@ -30,6 +30,75 @@ impl DrawingEngine {
         })
     }
     
+    /// バッチコマンドを処理（ワーカープール無しの簡易実装）
+    pub async fn process_command_batch(&self, canvas_id: &CanvasId, commands: Vec<DrawEngineCommand>) -> Result<(), String> {
+        // アクティブキャンバスを設定
+        self.set_active_canvas(canvas_id.clone()).await?;
+        
+        let mut canvases = self.canvases.lock().await;
+        let mut canvas = canvases
+            .get_mut(canvas_id)
+            .ok_or("Canvas not found")?;
+        
+        // レンダリング更新を一時停止
+        let initial_dirty_state = canvas.dirty;
+        
+        // コマンドを処理（レンダリング更新なし）
+        for command in commands {
+            match command {
+                DrawEngineCommand::BeginStroke { x, y, pressure } => {
+                    drop(canvases); // 一時的にロックを解放
+                    self.begin_stroke_internal(canvas_id, x, y, pressure).await?;
+                    canvases = self.canvases.lock().await;
+                    canvas = canvases.get_mut(canvas_id).ok_or("Canvas not found")?;
+                }
+                DrawEngineCommand::ContinueStroke { x, y, pressure } => {
+                    drop(canvases); // 一時的にロックを解放
+                    self.continue_stroke_internal(canvas_id, x, y, pressure).await?;
+                    canvases = self.canvases.lock().await;
+                    canvas = canvases.get_mut(canvas_id).ok_or("Canvas not found")?;
+                }
+                DrawEngineCommand::EndStroke => {
+                    drop(canvases); // 一時的にロックを解放
+                    self.end_stroke_internal(canvas_id).await?;
+                    canvases = self.canvases.lock().await;
+                    canvas = canvases.get_mut(canvas_id).ok_or("Canvas not found")?;
+                }
+                DrawEngineCommand::Clear => {
+                    if let Some(layer) = canvas.get_active_layer() {
+                        layer.clear();
+                        canvas.dirty = true;
+                    }
+                }
+                DrawEngineCommand::SetBrush(settings) => {
+                    let mut brush = self.brush_settings.lock().await;
+                    *brush = settings;
+                }
+                DrawEngineCommand::SetActiveLayer(index) => {
+                    if index < canvas.layers.len() {
+                        canvas.active_layer = index;
+                    } else {
+                        return Err("Layer index out of bounds".to_string());
+                    }
+                }
+                DrawEngineCommand::CreateLayer => {
+                    canvas.add_layer();
+                }
+                DrawEngineCommand::DeleteLayer(index) => {
+                    canvas.delete_layer(index)?;
+                }
+            }
+        }
+        
+        // バッチ処理後に一度だけレンダリング更新
+        if canvas.dirty || initial_dirty_state {
+            self.update_canvas_texture(canvas).await?;
+            canvas.dirty = false;
+        }
+        
+        Ok(())
+    }
+    
     pub async fn create_canvas(&self, width: u32, height: u32) -> Result<CanvasId, String> {
         let canvas_id = CanvasId::new();
         let mut canvas = CanvasState::new(canvas_id.clone(), width, height);
@@ -52,7 +121,7 @@ impl DrawingEngine {
         Ok(canvas_id)
     }
     
-    pub async fn process_command(&self, command: DrawCommand) -> Result<(), String> {
+    pub async fn process_command(&self, command: DrawEngineCommand) -> Result<(), String> {
         let active_canvas_id = {
             let active = self.active_canvas.lock().await;
             active.clone().ok_or("No active canvas")?
@@ -63,46 +132,82 @@ impl DrawingEngine {
             .get_mut(&active_canvas_id)
             .ok_or("Canvas not found")?;
         
+        // ストローク関連のコマンドか判定
+        let _is_stroke_command = matches!(
+            command,
+            DrawEngineCommand::BeginStroke { .. } | 
+            DrawEngineCommand::ContinueStroke { .. } |
+            DrawEngineCommand::EndStroke
+        );
+        
         match command {
-            DrawCommand::BeginStroke { x, y, pressure } => {
+            DrawEngineCommand::BeginStroke { x, y, pressure } => {
+                log::debug!("[RS] Processing BeginStroke at ({}, {})", x, y);
                 self.begin_stroke(canvas, x, y, pressure).await?;
+                // ストローク開始時もレンダリング更新
+                if canvas.dirty {
+                    log::debug!("[RS] Canvas is dirty after BeginStroke, updating texture");
+                    self.update_canvas_texture(canvas).await?;
+                    canvas.dirty = false;
+                }
             }
-            DrawCommand::ContinueStroke { x, y, pressure } => {
+            DrawEngineCommand::ContinueStroke { x, y, pressure } => {
+                log::debug!("[RS] Processing ContinueStroke at ({}, {})", x, y);
                 self.continue_stroke(canvas, x, y, pressure).await?;
+                // ストローク中も定期的にレンダリング更新を行う
+                if canvas.dirty {
+                    log::debug!("[RS] Canvas is dirty, updating texture during stroke");
+                    self.update_canvas_texture(canvas).await?;
+                    canvas.dirty = false;
+                }
             }
-            DrawCommand::EndStroke => {
+            DrawEngineCommand::EndStroke => {
+                log::debug!("[RS] Processing EndStroke");
                 self.end_stroke(canvas).await?;
+                // ストローク終了時のレンダリング更新
+                if canvas.dirty {
+                    log::debug!("[RS] Canvas is dirty after EndStroke, updating texture");
+                    self.update_canvas_texture(canvas).await?;
+                    canvas.dirty = false;
+                }
             }
-            DrawCommand::Clear => {
+            DrawEngineCommand::Clear => {
                 if let Some(layer) = canvas.get_active_layer() {
                     layer.clear();
                     canvas.dirty = true;
                 }
+                // クリア時は即座にレンダリング更新
+                if canvas.dirty {
+                    self.update_canvas_texture(canvas).await?;
+                    canvas.dirty = false;
+                }
             }
-            DrawCommand::SetBrush(settings) => {
+            DrawEngineCommand::SetBrush(settings) => {
                 let mut brush = self.brush_settings.lock().await;
                 *brush = settings;
             }
-            DrawCommand::SetActiveLayer(index) => {
+            DrawEngineCommand::SetActiveLayer(index) => {
                 if index < canvas.layers.len() {
                     canvas.active_layer = index;
                 } else {
                     return Err("Layer index out of bounds".to_string());
                 }
             }
-            DrawCommand::CreateLayer => {
+            DrawEngineCommand::CreateLayer => {
                 canvas.add_layer();
             }
-            DrawCommand::DeleteLayer(index) => {
+            DrawEngineCommand::DeleteLayer(index) => {
                 canvas.delete_layer(index)?;
+                // レイヤー削除時は即座にレンダリング更新
+                if canvas.dirty {
+                    self.update_canvas_texture(canvas).await?;
+                    canvas.dirty = false;
+                }
             }
         }
         
-        // 変更があった場合、レンダリングを更新
-        if canvas.dirty {
-            self.update_canvas_texture(canvas).await?;
-            canvas.dirty = false;
-        }
+        // ストローク中（ContinueStroke）はレンダリング更新をスキップ
+        // EndStroke、Clear、DeleteLayerの場合は各処理内で更新済み
         
         Ok(())
     }
@@ -222,5 +327,46 @@ impl DrawingEngine {
         canvas.texture = Some(texture);
         
         Ok(())
+    }
+    
+    pub fn get_renderer(&self) -> Arc<WgpuRenderer> {
+        self.renderer.clone()
+    }
+    
+    pub async fn set_active_canvas(&self, canvas_id: CanvasId) -> Result<(), String> {
+        let canvases = self.canvases.lock().await;
+        if !canvases.contains_key(&canvas_id) {
+            return Err("Canvas not found".to_string());
+        }
+        
+        let mut active = self.active_canvas.lock().await;
+        *active = Some(canvas_id);
+        Ok(())
+    }
+    
+    pub async fn process_command_with_canvas(&self, canvas_id: &CanvasId, command: DrawEngineCommand) -> Result<(), String> {
+        // アクティブキャンバスを一時的に設定
+        self.set_active_canvas(canvas_id.clone()).await?;
+        // コマンドを処理
+        self.process_command(command).await
+    }
+    
+    // 内部用メソッド（バッチ処理用）
+    async fn begin_stroke_internal(&self, canvas_id: &CanvasId, x: f32, y: f32, pressure: f32) -> Result<(), String> {
+        let mut canvases = self.canvases.lock().await;
+        let canvas = canvases.get_mut(canvas_id).ok_or("Canvas not found")?;
+        self.begin_stroke(canvas, x, y, pressure).await
+    }
+    
+    async fn continue_stroke_internal(&self, canvas_id: &CanvasId, x: f32, y: f32, pressure: f32) -> Result<(), String> {
+        let mut canvases = self.canvases.lock().await;
+        let canvas = canvases.get_mut(canvas_id).ok_or("Canvas not found")?;
+        self.continue_stroke(canvas, x, y, pressure).await
+    }
+    
+    async fn end_stroke_internal(&self, canvas_id: &CanvasId) -> Result<(), String> {
+        let mut canvases = self.canvases.lock().await;
+        let canvas = canvases.get_mut(canvas_id).ok_or("Canvas not found")?;
+        self.end_stroke(canvas).await
     }
 }

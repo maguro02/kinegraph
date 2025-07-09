@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[cfg_attr(feature = "specta", derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
-pub enum DrawCommand {
+pub enum DrawEngineCommand {
     BeginStroke { x: f32, y: f32, pressure: f32 },
     ContinueStroke { x: f32, y: f32, pressure: f32 },
     EndStroke,

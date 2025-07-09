@@ -28,6 +28,11 @@ pub fn run() {
     // ログレベルの初期化（デバッグ用に詳細レベル設定）
     env_logger::Builder::from_default_env()
         .filter_level(log::LevelFilter::Debug)
+        // wgpuのログを抑制
+        .filter_module("wgpu_core", log::LevelFilter::Warn)
+        .filter_module("wgpu_core::device", log::LevelFilter::Warn)
+        .filter_module("wgpu_core::resource", log::LevelFilter::Warn)
+        .filter_module("wgpu_hal", log::LevelFilter::Warn)
         .format_timestamp_secs()
         .format_module_path(true)
         .init();
@@ -94,7 +99,22 @@ pub fn run() {
         ipc::resize_canvas,
         ipc::get_compressed_render_result,
         ipc::get_diff_render_result,
-        ipc::clear_render_cache
+        ipc::clear_render_cache,
+        // バイナリハンドラー
+        ipc::draw_binary,
+        ipc::draw_batch_binary,
+        ipc::get_canvas_data_binary,
+        ipc::get_render_result_binary,
+        // シンプルバイナリハンドラー
+        ipc::simple_draw_command,
+        ipc::simple_draw_batch,
+        // ストリーミングハンドラー
+        ipc::get_canvas_data_binary_stream,
+        ipc::get_canvas_data_chunked,
+        ipc::get_canvas_data_perf_test,
+        // シンプルバイナリプロトコルハンドラー
+        ipc::draw_command_simple_binary,
+        ipc::draw_batch_simple_binary
     ]);
 
     debug!("[KINEGRAPH] invoke_handler 登録完了");

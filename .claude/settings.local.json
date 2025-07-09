@@ -45,7 +45,9 @@
       "Bash(wasm-pack build:*)",
       "Bash(node:*)",
       "Bash(mv:*)",
-      "Bash(mkdir:*)"
+      "Bash(mkdir:*)",
+      "Bash(sed:*)",
+      "WebFetch(domain:github.com)"
     ],
     "deny": []
   }

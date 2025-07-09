@@ -1,5 +1,5 @@
 use tauri::{command, State};
-use crate::drawing_engine::{DrawingEngine, DrawCommand, CanvasId};
+use crate::drawing_engine::{DrawingEngine, DrawEngineCommand, CanvasId};
 use super::binary::{BinaryTransfer, ImageFormat, RenderResult};
 use std::sync::Arc;
 use uuid::Uuid;
@@ -18,10 +18,13 @@ pub async fn init_canvas(
 #[command]
 #[cfg_attr(feature = "specta", specta::specta)]
 pub async fn draw_command(
-    command: DrawCommand,
+    command: DrawEngineCommand,
     engine: State<'_, Arc<DrawingEngine>>,
 ) -> Result<(), String> {
-    engine.process_command(command).await
+    log::debug!("[RS] draw_command received: {:?}", command);
+    let result = engine.process_command(command).await;
+    log::debug!("[RS] draw_command processed, result: {:?}", result);
+    result
 }
 
 #[command]
@@ -30,11 +33,13 @@ pub async fn get_render_result(
     canvas_id: String,
     engine: State<'_, Arc<DrawingEngine>>,
 ) -> Result<RenderResult, String> {
+    log::debug!("[RS] get_render_result called for canvas: {}", canvas_id);
     let id = Uuid::parse_str(&canvas_id)
         .map_err(|e| format!("Invalid canvas ID: {}", e))?;
     let canvas_id = CanvasId(id);
     
     let (image_data, width, height) = engine.get_canvas_data(&canvas_id).await?;
+    log::debug!("[RS] Got canvas data: {}x{}, data size: {}", width, height, image_data.len());
     
     let transfer = BinaryTransfer::new(image_data, width, height, ImageFormat::Rgba8);
     
