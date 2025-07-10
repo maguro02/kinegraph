@@ -7,8 +7,6 @@ import { useRef, useCallback, useEffect, useState } from 'react';
 import { useAtom } from 'jotai';
 import { toolAtom, brushSettingsAtom, drawingEngineAtom } from '../store/atoms';
 import type { DrawingContext, Point, StrokeId, Color, BrushTool } from '../types/drawing';
-import { createCanvas2DContext } from './canvas2dContext';
-import { createWasmDirectContext } from './wasmDirect';
 import { createWasmCanvasContext } from './wasmCanvas';
 
 interface UseCanvasOptions {
@@ -39,6 +37,12 @@ export function useCanvas({ width, height }: UseCanvasOptions): UseCanvasReturn 
 
     // 描画エンジンの初期化
     useEffect(() => {
+        // Tauriエンジンの場合はスキップ
+        if (drawingEngine === 'tauri') {
+            setIsReady(false);
+            return;
+        }
+        
         const initEngine = async () => {
             if (!canvasRef.current) return;
             
@@ -56,18 +60,12 @@ export function useCanvas({ width, height }: UseCanvasOptions): UseCanvasReturn 
                 let context: DrawingContext;
                 
                 switch (drawingEngine) {
-                    case 'canvas2d':
-                        context = createCanvas2DContext(canvasRef.current, width, height);
-                        break;
-                    case 'wasm':
-                        context = await createWasmDirectContext(canvasRef.current, width, height);
-                        break;
                     case 'wasmWorker':
                         context = await createWasmCanvasContext(canvasRef.current, width, height);
                         break;
                     default:
-                        // フォールバック
-                        context = createCanvas2DContext(canvasRef.current, width, height);
+                        // wasmWorkerをデフォルトとして使用
+                        context = await createWasmCanvasContext(canvasRef.current, width, height);
                 }
                 
                 await context.initialize();
@@ -78,18 +76,8 @@ export function useCanvas({ width, height }: UseCanvasOptions): UseCanvasReturn 
             } catch (error) {
                 console.error('[useCanvas] 描画エンジン初期化エラー:', error);
                 
-                // エラー時はCanvas2Dにフォールバック
-                if (canvasRef.current && drawingEngine !== 'canvas2d') {
-                    try {
-                        console.log('[useCanvas] Canvas2Dにフォールバック...');
-                        const fallbackContext = createCanvas2DContext(canvasRef.current, width, height);
-                        await fallbackContext.initialize();
-                        drawingContextRef.current = fallbackContext;
-                        setIsReady(true);
-                    } catch (fallbackError) {
-                        console.error('[useCanvas] フォールバックも失敗:', fallbackError);
-                    }
-                }
+                // エラー時の処理
+                console.error('[useCanvas] 描画エンジンの初期化に失敗しました');
             }
         };
 

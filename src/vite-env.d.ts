@@ -9,3 +9,10 @@ declare module "*.wasm?url" {
   const url: string;
   export default url;
 }
+
+declare module '*?worker' {
+  const workerConstructor: {
+    new (): Worker;
+  };
+  export default workerConstructor;
+}

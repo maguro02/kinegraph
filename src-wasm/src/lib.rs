@@ -11,8 +11,14 @@ pub use types::*;
 mod draw_engine;
 pub use draw_engine::*;
 
+mod webgpu_engine;
+pub use webgpu_engine::*;
+
 mod shaders;
 pub use shaders::*;
+
+mod stroke;
+pub use stroke::*;
 
 // When the `wee_alloc` feature is enabled, use `wee_alloc` as the global allocator.
 #[cfg(feature = "wee_alloc")]
@@ -25,43 +31,6 @@ pub fn set_panic_hook() {
     console_error_panic_hook::set_once();
 }
 
-// Shader code for stroke rendering
-const STROKE_SHADER: &str = r#"
-struct Uniforms {
-    canvas_size: vec2<f32>,
-    stroke_color: vec4<f32>,
-    stroke_width: f32,
-    _padding: f32,
-}
-
-@group(0) @binding(0)
-var<uniform> uniforms: Uniforms;
-
-struct VertexOutput {
-    @builtin(position) position: vec4<f32>,
-    @location(0) tex_coord: vec2<f32>,
-}
-
-@vertex
-fn vs_main(
-    @location(0) position: vec2<f32>,
-    @location(1) tex_coord: vec2<f32>,
-) -> VertexOutput {
-    // Convert from pixel coordinates to NDC
-    let ndc_x = (position.x / uniforms.canvas_size.x) * 2.0 - 1.0;
-    let ndc_y = 1.0 - (position.y / uniforms.canvas_size.y) * 2.0;
-    
-    var output: VertexOutput;
-    output.position = vec4<f32>(ndc_x, ndc_y, 0.0, 1.0);
-    output.tex_coord = tex_coord;
-    return output;
-}
-
-@fragment
-fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
-    return uniforms.stroke_color;
-}
-"#;
 
 // Vertex data for stroke points
 #[repr(C)]
@@ -755,11 +724,26 @@ pub fn main() {
 // Utility function to check WebGPU support
 #[wasm_bindgen]
 pub fn check_webgpu_support() -> bool {
-    let window = web_sys::window().expect("no global `window` exists");
-    let navigator = window.navigator();
+    use wasm_bindgen::JsCast;
+    
+    // First check if we're in a worker context
+    let global = js_sys::global();
+    
+    // Try to get the navigator object - in workers it's available as self.navigator
+    let navigator_js = if let Some(window) = web_sys::window() {
+        // We're in the main thread
+        let nav: web_sys::Navigator = window.navigator();
+        nav.into()
+    } else {
+        // We're in a worker - try to get navigator from WorkerGlobalScope
+        match js_sys::Reflect::get(&global, &JsValue::from_str("navigator")) {
+            Ok(nav) => nav,
+            Err(_) => return false,
+        }
+    };
     
     // Check if gpu property exists on navigator
-    let gpu = js_sys::Reflect::get(&navigator, &JsValue::from_str("gpu"))
+    let gpu = js_sys::Reflect::get(&navigator_js, &JsValue::from_str("gpu"))
         .unwrap_or(JsValue::UNDEFINED);
     
     !gpu.is_undefined()

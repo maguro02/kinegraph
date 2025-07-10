@@ -42,28 +42,43 @@ self.addEventListener('message', async (event: MessageEvent<DrawRequest>) => {
           }
         }
         
-        // DrawEngineの初期化
-        if (!wasmModule.DrawEngine) {
-          throw new Error('DrawEngine not found in WASM module');
-        }
-        
-        // DrawEngineはasyncコンストラクタを持つ可能性がある
+        // WebGPUDrawEngineまたはDrawEngineの初期化
         try {
-          drawEngine = await wasmModule.DrawEngine.new(width, height);
-          console.log('DrawEngine created successfully');
+          if (wasmModule.WebGPUDrawEngine) {
+            console.log('Using WebGPU-accelerated drawing engine');
+            // WebGPUDrawEngineは通常のコンストラクタ
+            drawEngine = new wasmModule.WebGPUDrawEngine(width, height);
+          } else if (wasmModule.DrawEngine) {
+            console.log('Using fallback drawing engine');
+            drawEngine = new wasmModule.DrawEngine(width, height);
+          } else {
+            throw new Error('Neither WebGPUDrawEngine nor DrawEngine found in WASM module');
+          }
+          console.log('Drawing engine created successfully');
         } catch (error) {
-          console.error('Failed to create DrawEngine:', error);
-          throw new Error(`Failed to create DrawEngine: ${error}`);
+          console.error('Failed to create drawing engine:', error);
+          throw new Error(`Failed to create drawing engine: ${error}`);
         }
         
-        // DrawEngineのSharedArrayBufferを取得
-        const sharedBuffer = drawEngine.get_shared_buffer();
-        if (sharedBuffer) {
-          canvasBuffer = sharedBuffer;
-          canvasView = new Uint8ClampedArray(sharedBuffer);
-          console.log('SharedArrayBuffer obtained from DrawEngine');
-        } else {
-          console.warn('SharedArrayBuffer not available from DrawEngine');
+        // SharedArrayBufferを取得
+        let sharedBuffer = null;
+        try {
+          // WebGPUDrawEngineはreadonly propertyとしてshared_bufferを持つ
+          if (drawEngine.shared_buffer !== undefined) {
+            sharedBuffer = drawEngine.shared_buffer;
+          } else if (typeof drawEngine.get_shared_buffer === 'function') {
+            sharedBuffer = drawEngine.get_shared_buffer();
+          }
+          
+          if (sharedBuffer) {
+            canvasBuffer = sharedBuffer;
+            canvasView = new Uint8ClampedArray(sharedBuffer);
+            console.log('SharedArrayBuffer obtained from drawing engine');
+          } else {
+            console.warn('SharedArrayBuffer not available from drawing engine');
+          }
+        } catch (error) {
+          console.warn('Failed to get SharedArrayBuffer:', error);
         }
         
         // 初期化完了を通知
@@ -176,11 +191,21 @@ self.addEventListener('message', async (event: MessageEvent<DrawRequest>) => {
         height = data.height;
         drawEngine.resize(width, height);
         
-        // DrawEngineの新しいSharedArrayBufferを取得
-        const newBuffer = drawEngine.get_shared_buffer();
-        if (newBuffer) {
-          canvasBuffer = newBuffer;
-          canvasView = new Uint8ClampedArray(newBuffer);
+        // 新しいSharedArrayBufferを取得
+        try {
+          let newBuffer = null;
+          if (drawEngine.shared_buffer !== undefined) {
+            newBuffer = drawEngine.shared_buffer;
+          } else if (typeof drawEngine.get_shared_buffer === 'function') {
+            newBuffer = drawEngine.get_shared_buffer();
+          }
+          
+          if (newBuffer) {
+            canvasBuffer = newBuffer;
+            canvasView = new Uint8ClampedArray(newBuffer);
+          }
+        } catch (error) {
+          console.warn('Failed to get new SharedArrayBuffer after resize:', error);
         }
         
         // レンダリング実行

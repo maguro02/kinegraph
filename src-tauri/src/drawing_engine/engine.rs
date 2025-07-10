@@ -5,8 +5,9 @@ use super::{
     renderer::WgpuRenderer,
     canvas_state::{CanvasState, CanvasId},
     commands::{DrawEngineCommand, BrushSettings},
-    stroke::{StrokeState, draw_brush_stroke, draw_brush_point},
+    stroke::{StrokeState, draw_brush_point, create_brush_stamp, draw_line_incremental, DirtyRegion},
     compositor::Compositor,
+    types::StampCache,
 };
 
 pub struct DrawingEngine {
@@ -15,6 +16,7 @@ pub struct DrawingEngine {
     active_canvas: Arc<Mutex<Option<CanvasId>>>,
     brush_settings: Arc<Mutex<BrushSettings>>,
     stroke_states: Arc<Mutex<HashMap<CanvasId, StrokeState>>>,
+    stamp_cache: StampCache,
 }
 
 impl DrawingEngine {
@@ -27,6 +29,7 @@ impl DrawingEngine {
             active_canvas: Arc::new(Mutex::new(None)),
             brush_settings: Arc::new(Mutex::new(BrushSettings::default())),
             stroke_states: Arc::new(Mutex::new(HashMap::new())),
+            stamp_cache: Arc::new(std::sync::Mutex::new(HashMap::new())),
         })
     }
     
@@ -231,32 +234,22 @@ impl DrawingEngine {
         let mut stroke_states = self.stroke_states.lock().await;
         if let Some(stroke_state) = stroke_states.get_mut(&canvas.id) {
             if stroke_state.is_drawing {
-                if let Some((last_x, last_y)) = stroke_state.last_point {
-                    let brush = self.brush_settings.lock().await;
-                    if let Some(layer) = canvas.get_active_layer() {
-                        // 前回の点からの線を補間して描画
-                        let last_pressure = stroke_state.current_path.last()
-                            .map(|(_, _, p)| *p)
-                            .unwrap_or(pressure);
-                        
-                        draw_brush_stroke(
-                            &mut layer.data,
-                            layer.width,
-                            layer.height,
-                            last_x,
-                            last_y,
-                            x,
-                            y,
-                            last_pressure,
-                            pressure,
-                            &brush,
-                        );
-                        
+                // まずポイントを追加
+                stroke_state.add_point(x, y, pressure);
+                
+                // インクリメンタルレンダリングを使用
+                let brush = self.brush_settings.lock().await;
+                if let Some(layer) = canvas.get_active_layer() {
+                    if let Some(_dirty_region) = draw_line_incremental(
+                        &mut layer.data,
+                        layer.width,
+                        layer.height,
+                        stroke_state,
+                        &brush,
+                    ) {
                         canvas.dirty = true;
                     }
                 }
-                
-                stroke_state.add_point(x, y, pressure);
             }
         }
         
@@ -299,6 +292,48 @@ impl DrawingEngine {
         }
         
         Ok(())
+    }
+    
+    /// インクリメンタルレンダリング（差分更新）
+    pub async fn render_incremental(&self, canvas_id: &CanvasId) -> Result<Option<DirtyRegion>, String> {
+        let mut canvases = self.canvases.lock().await;
+        let canvas = canvases.get_mut(canvas_id).ok_or("Canvas not found")?;
+        
+        let mut stroke_states = self.stroke_states.lock().await;
+        if let Some(stroke_state) = stroke_states.get_mut(canvas_id) {
+            if stroke_state.is_drawing && stroke_state.has_unrendered_points() {
+                let brush = self.brush_settings.lock().await;
+                if let Some(layer) = canvas.get_active_layer() {
+                    // インクリメンタルレンダリング
+                    if let Some(dirty_region) = draw_line_incremental(
+                        &mut layer.data,
+                        layer.width,
+                        layer.height,
+                        stroke_state,
+                        &brush,
+                    ) {
+                        canvas.dirty = true;
+                        
+                        // 部分的なテクスチャ更新（将来的に実装）
+                        // 現在は全体更新
+                        drop(stroke_states);
+                        self.update_canvas_texture(canvas).await?;
+                        canvas.dirty = false;
+                        
+                        return Ok(Some(dirty_region));
+                    }
+                }
+            }
+        }
+        
+        Ok(None)
+    }
+    
+    /// 現在のストロークのダーティリージョンを取得
+    pub async fn get_stroke_dirty_region(&self, canvas_id: &CanvasId) -> Option<DirtyRegion> {
+        let stroke_states = self.stroke_states.lock().await;
+        stroke_states.get(canvas_id)
+            .and_then(|state| state.dirty_region.clone())
     }
     
     pub async fn get_canvas_data(&self, canvas_id: &CanvasId) -> Result<(Vec<u8>, u32, u32), String> {
@@ -351,6 +386,21 @@ impl DrawingEngine {
         self.process_command(command).await
     }
     
+    /// スタンプキャッシュのクリア
+    pub fn clear_stamp_cache(&self) {
+        let mut cache = self.stamp_cache.lock().unwrap();
+        cache.clear();
+    }
+    
+    /// 特定サイズのスタンプを事前生成
+    pub fn preload_stamp(&self, size: u32) {
+        let mut cache = self.stamp_cache.lock().unwrap();
+        if !cache.contains_key(&size) {
+            let stamp = create_brush_stamp(size);
+            cache.insert(size, stamp);
+        }
+    }
+    
     // 内部用メソッド（バッチ処理用）
     async fn begin_stroke_internal(&self, canvas_id: &CanvasId, x: f32, y: f32, pressure: f32) -> Result<(), String> {
         let mut canvases = self.canvases.lock().await;
@@ -362,6 +412,28 @@ impl DrawingEngine {
         let mut canvases = self.canvases.lock().await;
         let canvas = canvases.get_mut(canvas_id).ok_or("Canvas not found")?;
         self.continue_stroke(canvas, x, y, pressure).await
+    }
+    
+    /// ストロークレンダリングキャッシュのクリア
+    pub async fn clear_stroke_cache(&self, canvas_id: &CanvasId) -> Result<(), String> {
+        let mut stroke_states = self.stroke_states.lock().await;
+        if let Some(stroke_state) = stroke_states.get_mut(canvas_id) {
+            stroke_state.last_rendered_index = 0;
+            stroke_state.dirty_region = None;
+        }
+        Ok(())
+    }
+    
+    /// アクティブストロークの最適化されたレンダリング
+    pub async fn render_active_stroke(&self, canvas_id: &CanvasId) -> Result<(), String> {
+        // インクリメンタルレンダリングを実行
+        if let Some(_dirty_region) = self.render_incremental(canvas_id).await? {
+            // レンダリングが実行された場合、成功を返す
+            Ok(())
+        } else {
+            // レンダリングが不要だった場合
+            Ok(())
+        }
     }
     
     async fn end_stroke_internal(&self, canvas_id: &CanvasId) -> Result<(), String> {

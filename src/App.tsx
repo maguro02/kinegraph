@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { Provider } from 'jotai';
 import { useAtom } from 'jotai';
 import { projectAtom } from './store/atoms';
@@ -7,29 +7,20 @@ import { Timeline } from './components/Timeline';
 import { Button } from './components/Button';
 import { Toolbar } from './components/Toolbar';
 import { LayerPanel } from './components/LayerPanel';
-import { PerformanceTest } from './components/PerformanceTest';
-import { initializeDebugLogging, getDrawingState, processUserInput } from './lib/tauri';
 
 function AppContent() {
   const [project, setProject] = useAtom(projectAtom);
-  const [showPerformanceTest, setShowPerformanceTest] = useState(false);
 
   useEffect(() => {
     // ハイブリッドシステムでは、プロジェクト管理はRust側で行う
     // 初期状態を取得
-    const initHybridSystem = async () => {
+    const initProject = () => {
       try {
-        // デバッグログを初期化
-        await initializeDebugLogging();
-        
-        const state = await getDrawingState();
-        console.log("[App] ハイブリッドシステム初期状態:", state);
-        
-        // プロジェクトのダミーデータを設定（既存のコンポーネントとの互換性のため）
+        // プロジェクトのデフォルトデータを設定
         if (!project) {
           setProject({
             id: 'project-1',
-            name: 'ハイブリッドプロジェクト',
+            name: '新規プロジェクト',
             width: 1920,
             height: 1080,
             frameRate: 24,
@@ -37,27 +28,26 @@ function AppContent() {
               {
                 id: 'frame-1',
                 duration: 1,
-                layers: state.layers.map((l: any) => ({
-                  id: l.id,
-                  name: l.name,
-                  visible: l.visible,
-                  opacity: l.opacity,
-                  blendMode: (l.blend_mode === 'multiply' ? 'Multiply' : 
-                            l.blend_mode === 'screen' ? 'Screen' : 
-                            l.blend_mode === 'overlay' ? 'Overlay' : 'Normal') as 'Normal' | 'Multiply' | 'Screen' | 'Overlay',
-                  locked: false,
-                  data: null
-                }))
+                layers: [
+                  {
+                    id: 'layer-1',
+                    name: 'レイヤー 1',
+                    visible: true,
+                    opacity: 1,
+                    blendMode: 'Normal' as const,
+                    locked: false,
+                  }
+                ]
               }
             ]
           });
         }
       } catch (error) {
-        console.error('ハイブリッドシステムの初期化に失敗しました:', error);
+        console.error('プロジェクトの初期化に失敗しました:', error);
       }
     };
 
-    initHybridSystem();
+    initProject();
   }, [project, setProject]);
 
   if (!project) {
@@ -65,7 +55,7 @@ function AppContent() {
       <div className="flex items-center justify-center h-screen bg-secondary-900">
         <div className="text-center">
           <div className="text-2xl font-bold text-secondary-100 mb-4">Kinegraph</div>
-          <div className="text-secondary-400">ハイブリッドシステムを初期化中...</div>
+          <div className="text-secondary-400">プロジェクトを初期化中...</div>
         </div>
       </div>
     );
@@ -112,8 +102,9 @@ function AppContent() {
               variant="secondary" 
               size="sm" 
               className="w-full"
-              onClick={async () => {
-                await processUserInput({ type: 'Undo' });
+              onClick={() => {
+                // TODO: Undo実装
+                console.log('Undo');
               }}
             >
               Undo
@@ -122,19 +113,12 @@ function AppContent() {
               variant="secondary" 
               size="sm" 
               className="w-full"
-              onClick={async () => {
-                await processUserInput({ type: 'Redo' });
+              onClick={() => {
+                // TODO: Redo実装
+                console.log('Redo');
               }}
             >
               Redo
-            </Button>
-            <Button 
-              variant="primary" 
-              size="sm" 
-              className="w-full"
-              onClick={() => setShowPerformanceTest(!showPerformanceTest)}
-            >
-              {showPerformanceTest ? 'パフォーマンステストを閉じる' : 'パフォーマンステスト'}
             </Button>
           </div>
         </aside>
@@ -145,22 +129,6 @@ function AppContent() {
         <Timeline />
       </footer>
       
-      {/* パフォーマンステストモーダル */}
-      {showPerformanceTest && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl max-h-[90vh] overflow-y-auto">
-            <PerformanceTest />
-            <div className="p-4 flex justify-end">
-              <Button
-                variant="secondary"
-                onClick={() => setShowPerformanceTest(false)}
-              >
-                閉じる
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

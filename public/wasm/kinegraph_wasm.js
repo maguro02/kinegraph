@@ -328,7 +328,7 @@ function __wbg_adapter_48(arg0, arg1, arg2) {
     wasm.__wbindgen_export_5(arg0, arg1, addHeapObject(arg2));
 }
 
-function __wbg_adapter_147(arg0, arg1, arg2, arg3) {
+function __wbg_adapter_159(arg0, arg1, arg2, arg3) {
     wasm.__wbindgen_export_6(arg0, arg1, addHeapObject(arg2), addHeapObject(arg3));
 }
 
@@ -526,12 +526,47 @@ export class DrawEngine {
         return takeObject(ret);
     }
     /**
+     * 現在のダーティリージョンを取得してクリア (WASM API)
+     * @returns {Array<any>}
+     */
+    get_and_clear_dirty_regions() {
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            wasm.drawengine_get_and_clear_dirty_regions(retptr, this.__wbg_ptr);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            var r2 = getDataViewMemory0().getInt32(retptr + 4 * 2, true);
+            if (r2) {
+                throw takeObject(r1);
+            }
+            return takeObject(r0);
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+        }
+    }
+    /**
      * 描画を実行してSharedArrayBufferに書き込み
      */
     render() {
         try {
             const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
             wasm.drawengine_render(retptr, this.__wbg_ptr);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            if (r1) {
+                throw takeObject(r0);
+            }
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+        }
+    }
+    /**
+     * 部分的に描画を実行（ダーティリージョンのみ）
+     */
+    render_dirty_regions() {
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            wasm.drawengine_render_dirty_regions(retptr, this.__wbg_ptr);
             var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
             var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
             if (r1) {
@@ -750,6 +785,165 @@ export class SharedBuffer {
             const ptr0 = passArray8ToWasm0(pixels, wasm.__wbindgen_export_2);
             const len0 = WASM_VECTOR_LEN;
             wasm.sharedbuffer_write_pixels(retptr, this.__wbg_ptr, offset, ptr0, len0);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            if (r1) {
+                throw takeObject(r0);
+            }
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+        }
+    }
+}
+
+const WebGPUDrawEngineFinalization = (typeof FinalizationRegistry === 'undefined')
+    ? { register: () => {}, unregister: () => {} }
+    : new FinalizationRegistry(ptr => wasm.__wbg_webgpudrawengine_free(ptr >>> 0, 1));
+/**
+ * WebGPU-accelerated drawing engine with SharedArrayBuffer support
+ */
+export class WebGPUDrawEngine {
+
+    static __wrap(ptr) {
+        ptr = ptr >>> 0;
+        const obj = Object.create(WebGPUDrawEngine.prototype);
+        obj.__wbg_ptr = ptr;
+        WebGPUDrawEngineFinalization.register(obj, obj.__wbg_ptr, obj);
+        return obj;
+    }
+
+    __destroy_into_raw() {
+        const ptr = this.__wbg_ptr;
+        this.__wbg_ptr = 0;
+        WebGPUDrawEngineFinalization.unregister(this);
+        return ptr;
+    }
+
+    free() {
+        const ptr = this.__destroy_into_raw();
+        wasm.__wbg_webgpudrawengine_free(ptr, 0);
+    }
+    /**
+     * Create a new WebGPU-accelerated drawing engine
+     * @param {number} canvas_width
+     * @param {number} canvas_height
+     */
+    constructor(canvas_width, canvas_height) {
+        const ret = wasm.webgpudrawengine_new(canvas_width, canvas_height);
+        return takeObject(ret);
+    }
+    /**
+     * Get the SharedArrayBuffer
+     * @returns {SharedArrayBuffer}
+     */
+    get shared_buffer() {
+        const ret = wasm.webgpudrawengine_shared_buffer(this.__wbg_ptr);
+        return takeObject(ret);
+    }
+    /**
+     * Begin a new stroke
+     * @param {number} x
+     * @param {number} y
+     * @param {number} pressure
+     * @param {number} r
+     * @param {number} g
+     * @param {number} b
+     * @param {number} a
+     * @param {number} brush_type
+     * @param {number} size
+     * @returns {number}
+     */
+    begin_stroke(x, y, pressure, r, g, b, a, brush_type, size) {
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            wasm.webgpudrawengine_begin_stroke(retptr, this.__wbg_ptr, x, y, pressure, r, g, b, a, brush_type, size);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            var r2 = getDataViewMemory0().getInt32(retptr + 4 * 2, true);
+            if (r2) {
+                throw takeObject(r1);
+            }
+            return r0 >>> 0;
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+        }
+    }
+    /**
+     * Add a point to the active stroke
+     * @param {number} x
+     * @param {number} y
+     * @param {number} pressure
+     */
+    add_point(x, y, pressure) {
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            wasm.webgpudrawengine_add_point(retptr, this.__wbg_ptr, x, y, pressure);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            if (r1) {
+                throw takeObject(r0);
+            }
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+        }
+    }
+    /**
+     * End the current stroke
+     */
+    end_stroke() {
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            wasm.webgpudrawengine_end_stroke(retptr, this.__wbg_ptr);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            if (r1) {
+                throw takeObject(r0);
+            }
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+        }
+    }
+    /**
+     * Clear the canvas
+     */
+    clear() {
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            wasm.webgpudrawengine_clear(retptr, this.__wbg_ptr);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            if (r1) {
+                throw takeObject(r0);
+            }
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+        }
+    }
+    /**
+     * Render the current state to the SharedArrayBuffer
+     */
+    render() {
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            wasm.webgpudrawengine_render(retptr, this.__wbg_ptr);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            if (r1) {
+                throw takeObject(r0);
+            }
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+        }
+    }
+    /**
+     * Resize the canvas
+     * @param {number} width
+     * @param {number} height
+     */
+    resize(width, height) {
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            wasm.webgpudrawengine_resize(retptr, this.__wbg_ptr, width, height);
             var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
             var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
             if (r1) {
@@ -2049,7 +2243,7 @@ function __wbg_get_imports() {
                 const a = state0.a;
                 state0.a = 0;
                 try {
-                    return __wbg_adapter_147(a, state0.b, arg0, arg1);
+                    return __wbg_adapter_159(a, state0.b, arg0, arg1);
                 } finally {
                     state0.a = a;
                 }
@@ -2619,6 +2813,10 @@ function __wbg_get_imports() {
     imports.wbg.__wbg_warn_4ca3906c248c47c4 = function(arg0) {
         console.warn(getObject(arg0));
     };
+    imports.wbg.__wbg_webgpudrawengine_new = function(arg0) {
+        const ret = WebGPUDrawEngine.__wrap(arg0);
+        return addHeapObject(ret);
+    };
     imports.wbg.__wbg_webgpurenderer_new = function(arg0) {
         const ret = WebGPURenderer.__wrap(arg0);
         return addHeapObject(ret);
@@ -2677,15 +2875,15 @@ function __wbg_get_imports() {
         const ret = false;
         return ret;
     };
-    imports.wbg.__wbindgen_closure_wrapper3197 = function(arg0, arg1, arg2) {
-        const ret = makeMutClosure(arg0, arg1, 308, __wbg_adapter_48);
+    imports.wbg.__wbindgen_closure_wrapper3297 = function(arg0, arg1, arg2) {
+        const ret = makeMutClosure(arg0, arg1, 315, __wbg_adapter_48);
         return addHeapObject(ret);
     };
-    imports.wbg.__wbindgen_closure_wrapper4362 = function(arg0, arg1, arg2) {
+    imports.wbg.__wbindgen_closure_wrapper4462 = function(arg0, arg1, arg2) {
         const ret = makeMutClosure(arg0, arg1, 3, __wbg_adapter_48);
         return addHeapObject(ret);
     };
-    imports.wbg.__wbindgen_closure_wrapper523 = function(arg0, arg1, arg2) {
+    imports.wbg.__wbindgen_closure_wrapper524 = function(arg0, arg1, arg2) {
         const ret = makeMutClosure(arg0, arg1, 3, __wbg_adapter_48);
         return addHeapObject(ret);
     };
@@ -2846,31 +3044,3 @@ async function __wbg_init(module_or_path) {
 
 export { initSync };
 export default __wbg_init;
-
-// Check for required features
-export function checkRequiredFeatures() {
-    const features = {
-        webgpu: 'gpu' in navigator,
-        offscreenCanvas: typeof OffscreenCanvas !== 'undefined',
-        sharedArrayBuffer: typeof SharedArrayBuffer !== 'undefined',
-        crossOriginIsolated: window.crossOriginIsolated === true,
-    };
-    
-    const missing = Object.entries(features)
-        .filter(([_, supported]) => !supported)
-        .map(([feature]) => feature);
-    
-    if (missing.length > 0) {
-        console.warn('Missing required features:', missing);
-    }
-    
-    return features;
-}
-
-// Helper to create OffscreenCanvas from regular canvas
-export function createOffscreenCanvas(canvas) {
-    if (canvas.transferControlToOffscreen) {
-        return canvas.transferControlToOffscreen();
-    }
-    throw new Error('transferControlToOffscreen not supported');
-}

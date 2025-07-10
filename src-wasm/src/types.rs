@@ -182,6 +182,19 @@ pub struct DirtyRegion {
     pub height: u32,
 }
 
+/// ブラシスタンプ
+#[derive(Debug, Clone)]
+pub struct BrushStamp {
+    pub size: u32,
+    pub alpha_map: Vec<f32>,
+}
+
+/// スタンプキャッシュの型定義
+pub type StampCache = std::sync::Arc<std::sync::Mutex<std::collections::HashMap<u32, BrushStamp>>>;
+
+/// スタンプキャッシュの最大サイズ
+pub const MAX_STAMP_CACHE_SIZE: usize = 50;
+
 impl DirtyRegion {
     /// 2つのDirtyRegionをマージ
     pub fn merge(&self, other: &DirtyRegion) -> DirtyRegion {

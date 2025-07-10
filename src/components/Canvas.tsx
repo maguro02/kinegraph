@@ -1,8 +1,7 @@
 import { useCallback } from "react";
 import { useCanvas } from "../lib/useCanvas";
 import { useAtom } from "jotai";
-import { toolAtom, brushSettingsAtom, drawingEngineAtom } from "../store/atoms";
-import { DrawingCanvas } from "./DrawingCanvas";
+import { toolAtom, brushSettingsAtom } from "../store/atoms";
 
 interface CanvasProps {
   width: number;
@@ -11,18 +10,11 @@ interface CanvasProps {
 
 
 export function Canvas({ width, height }: CanvasProps) {
-  const [drawingEngine] = useAtom(drawingEngineAtom);
-  
-  // Tauriエンジンを使用する場合は新しいDrawingCanvasを使用
-  if (drawingEngine === 'tauri') {
-    return <DrawingCanvas width={width} height={height} />;
-  }
-  
-  // 新しい統一されたCanvas描画フックを使用
-  const { canvasRef, isReady, isDrawing, startDrawing, draw, endDrawing, clear } = useCanvas({ width, height });
-
   const [currentTool] = useAtom(toolAtom);
   const [brushSettings] = useAtom(brushSettingsAtom);
+  
+  // 新しい統一されたCanvas描画フックを常に呼び出す
+  const { canvasRef, isReady, isDrawing, startDrawing, draw, endDrawing, clear } = useCanvas({ width, height });
 
   // ポインターイベントハンドラ
   const handlePointerDown = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
@@ -89,13 +81,13 @@ export function Canvas({ width, height }: CanvasProps) {
       {/* 描画エンジン状態インジケーター（開発用） */}
       {process.env.NODE_ENV === 'development' && isReady && (
         <div className="absolute top-2 right-2 text-xs text-gray-500 bg-white bg-opacity-75 p-1 rounded">
-          {drawingEngine === 'wasmWorker' ? 'WASM Worker' : drawingEngine === 'wasm' ? 'WASM Direct' : 'Canvas 2D'}
+          WASM Worker
         </div>
       )}
       
       {/* デバッグ情報（開発時のみ） */}
       <div className="absolute bottom-4 left-4 text-xs text-gray-500 bg-white bg-opacity-75 p-2 rounded">
-        <div>Engine: {drawingEngine === 'wasmWorker' ? 'WASM Worker' : drawingEngine === 'wasm' ? 'WASM Direct' : 'Canvas 2D'}</div>
+        <div>Engine: WASM Worker</div>
         <div>Tool: {currentTool}</div>
         <div>Size: {brushSettings.size}px</div>
         <div>Opacity: {Math.round(brushSettings.opacity * 100)}%</div>

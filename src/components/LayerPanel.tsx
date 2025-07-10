@@ -1,11 +1,8 @@
 import React from "react";
 import { useAtom } from "jotai";
 import { useState, useCallback, useEffect, useRef } from "react";
-import { projectAtom, currentFrameAtom, selectedLayerAtom, Layer, drawingEngineAtom } from "../store/atoms.ts";
+import { projectAtom, currentFrameAtom, selectedLayerAtom, Layer } from "../store/atoms.ts";
 import { Button } from "./Button.tsx";
-import { useLayerManagement } from "../lib/useLayerManagement.ts";
-import { commands } from "../lib/commands";
-import { LayerPanelDrawingEngine } from "./LayerPanelDrawingEngine";
 
 // アイコンコンポーネント
 const EyeIcon = ({ visible }: { visible: boolean }) => (
@@ -118,13 +115,6 @@ const LayerThumbnail = ({ layerId }: { layerId: string }) => {
 };
 
 export function LayerPanel() {
-    const [drawingEngine] = useAtom(drawingEngineAtom);
-    
-    // Tauriエンジンを使用する場合は新しいLayerPanelを使用
-    if (drawingEngine === 'tauri') {
-        return <LayerPanelDrawingEngine />;
-    }
-    
     const [project, setProject] = useAtom(projectAtom);
     const [currentFrame] = useAtom(currentFrameAtom);
     const [selectedLayer, setSelectedLayer] = useAtom(selectedLayerAtom);
@@ -132,7 +122,6 @@ export function LayerPanel() {
     const [editingName, setEditingName] = useState("");
     const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
 
-    const { isInitialized: isEngineInitialized, error: engineError, clearError } = useLayerManagement();
     const [error, setError] = useState<string | null>(null);
     const [isCreating, setIsCreating] = useState(false);
     const [debugInfo, setDebugInfo] = useState<{
@@ -146,8 +135,8 @@ export function LayerPanel() {
     const maxLayers = 10;
     const canAddLayer = layers.length < maxLayers;
 
-    // 総合エラー状態
-    const displayError = error || engineError;
+    // エラー状態
+    const displayError = error;
 
     // レイヤー作成
     const handleCreateLayer = useCallback(async () => {
@@ -163,8 +152,8 @@ export function LayerPanel() {
             currentLayerCount: layers.length,
             maxLayers,
             canAddLayer,
-            isEngineInitialized,
-            hasDrawingEngine: isEngineInitialized,
+            isEngineInitialized: true,
+            hasDrawingEngine: true,
         };
 
         console.log("📊 レイヤー作成前の状態:", preConditions);
@@ -183,11 +172,7 @@ export function LayerPanel() {
             return;
         }
 
-        if (!isEngineInitialized) {
-            console.error("❌ 描画エンジンが初期化されていません");
-            setError("描画エンジンの初期化を待ってください");
-            return;
-        }
+        // 描画エンジンチェックを削除（WASM版では常に利用可能）
 
         setIsCreating(true);
         setError(null);
@@ -209,15 +194,8 @@ export function LayerPanel() {
 
             console.log("📦 新レイヤーオブジェクト:", newLayer);
 
-            // Rustエンジンでテクスチャ作成
-            console.log(`🦀 Rustエンジンでテクスチャ作成開始: ${newLayerId} (${project.width}x${project.height})`);
-            // 新しいバインディングを使用してレイヤーを作成
-            const result = await commands.createDrawingLayer(newLayerId, project.width, project.height);
-            if (result.status === "error") {
-                throw new Error(result.error || "Unknown error");
-            }
-            const layerData = result.data;
-            console.log("✅ Rustエンジンテクスチャ作成完了", layerData);
+            // WASM版ではローカル状態の更新のみ
+            console.log(`📝 レイヤー作成: ${newLayerId} (${project.width}x${project.height})`);
 
             // プロジェクト状態を更新
             const updatedProject = { ...project };
@@ -254,7 +232,7 @@ export function LayerPanel() {
                 stack: error instanceof Error ? error.stack : undefined,
                 projectId: project?.id,
                 frameId: currentFrame?.id,
-                engineInitialized: isEngineInitialized,
+                engineInitialized: true,
                 timestamp: new Date().toISOString(),
             });
 
@@ -267,7 +245,7 @@ export function LayerPanel() {
         } finally {
             setIsCreating(false);
         }
-    }, [project, currentFrame, layers, canAddLayer, setProject, setSelectedLayer, isEngineInitialized]);
+    }, [project, currentFrame, layers, canAddLayer, setProject, setSelectedLayer]);
 
     // レイヤー削除
     const handleDeleteLayer = useCallback(
@@ -275,14 +253,8 @@ export function LayerPanel() {
             if (!project || !currentFrame) return;
 
             try {
-                // Rustエンジンからテクスチャを削除
-                // 新しいバインディングを使用してレイヤーを削除
-                const result = await commands.removeLayer(layerId);
-                if (result.status === "error") {
-                    throw new Error(result.error || "Unknown error");
-                }
-                const removeData = result.data;
-                console.log("✅ レイヤー削除完了", removeData);
+                // WASM版ではローカル状態の更新のみ
+                console.log("📝 レイヤー削除:", layerId);
 
                 // プロジェクト状態を更新
                 const updatedProject = { ...project };
@@ -407,12 +379,10 @@ export function LayerPanel() {
                                 canAddLayer && !isCreating ? "hover:bg-primary-600" : "opacity-50 cursor-not-allowed"
                             }`}
                             onClick={canAddLayer && !isCreating ? handleCreateLayer : undefined}
-                            disabled={!canAddLayer || !isEngineInitialized || isCreating}
+                            disabled={!canAddLayer || isCreating}
                             title={
                                 isCreating
                                     ? "レイヤー作成中..."
-                                    : !isEngineInitialized
-                                    ? "描画エンジン初期化中..."
                                     : canAddLayer
                                     ? "新しいレイヤーを作成"
                                     : `最大${maxLayers}枚まで`
@@ -446,7 +416,7 @@ export function LayerPanel() {
                                 <button
                                     onClick={() => {
                                         setError(null);
-                                        clearError();
+                                        // clearError関数の呼び出しを削除
                                         setDebugInfo((prev) => ({ ...prev, lastError: null }));
                                     }}
                                     className="ml-2 text-red-400 hover:text-red-200 flex-shrink-0"
@@ -457,7 +427,7 @@ export function LayerPanel() {
                             {error && (
                                 <button
                                     onClick={handleCreateLayer}
-                                    disabled={isCreating || !isEngineInitialized}
+                                    disabled={isCreating}
                                     className="mt-2 px-2 py-1 bg-red-700 hover:bg-red-600 disabled:opacity-50 rounded text-xs"
                                 >
                                     {isCreating ? "再試行中..." : "再試行"}
@@ -470,26 +440,7 @@ export function LayerPanel() {
                 {/* 状態表示 */}
                 {!displayError && (
                     <div className="mt-2 space-y-1">
-                        {!isEngineInitialized && (
-                            <div className="p-2 bg-yellow-900/50 border border-yellow-600 rounded text-xs text-yellow-200">
-                                <div className="flex items-center gap-2">
-                                    <svg
-                                        className="w-3 h-3 animate-spin"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        viewBox="0 0 24 24"
-                                    >
-                                        <path
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            strokeWidth={2}
-                                            d="M12 4v4m0 4v4m4-8h-4m4 0h-4"
-                                        />
-                                    </svg>
-                                    描画エンジンを初期化中...
-                                </div>
-                            </div>
-                        )}
+                        {/* 描画エンジン初期化表示を削除（WASM版では不要） */}
 
                         {isCreating && (
                             <div className="p-2 bg-blue-900/50 border border-blue-600 rounded text-xs text-blue-200">
@@ -529,7 +480,7 @@ export function LayerPanel() {
                         <div className="mt-1 p-2 bg-secondary-900 border border-secondary-700 rounded text-xs text-secondary-300 font-mono">
                             <div>プロジェクト: {debugInfo.projectState.hasProject ? "✓" : "✗"}</div>
                             <div>フレーム: {debugInfo.projectState.hasCurrentFrame ? "✓" : "✗"}</div>
-                            <div>エンジン: {debugInfo.projectState.isEngineInitialized ? "✓" : "✗"}</div>
+                            <div>エンジン: ✓</div>
                             <div>
                                 レイヤー数: {debugInfo.layerCount}/{maxLayers}
                             </div>

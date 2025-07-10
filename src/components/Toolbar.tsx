@@ -170,22 +170,13 @@ export function Toolbar() {
             <label className="text-xs text-secondary-300 text-center">描画エンジン</label>
             <div className="flex flex-col gap-1">
               <button
-                onClick={() => setDrawingEngine('canvas2d')}
+                onClick={() => setDrawingEngine('tauri')}
                 className={`px-2 py-1 text-xs rounded ${
-                  drawingEngine === 'canvas2d' ? 'bg-primary-600 text-white' : 'bg-secondary-700 text-secondary-300 hover:bg-secondary-600'
+                  drawingEngine === 'tauri' ? 'bg-primary-600 text-white' : 'bg-secondary-700 text-secondary-300 hover:bg-secondary-600'
                 }`}
-                title="Canvas 2D API"
+                title="Tauri IPC"
               >
-                Canvas2D
-              </button>
-              <button
-                onClick={() => setDrawingEngine('wasm')}
-                className={`px-2 py-1 text-xs rounded ${
-                  drawingEngine === 'wasm' ? 'bg-primary-600 text-white' : 'bg-secondary-700 text-secondary-300 hover:bg-secondary-600'
-                }`}
-                title="WASM ダイレクト"
-              >
-                WASM
+                Tauri
               </button>
               <button
                 onClick={() => setDrawingEngine('wasmWorker')}

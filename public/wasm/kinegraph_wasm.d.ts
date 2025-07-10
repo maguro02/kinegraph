@@ -75,9 +75,17 @@ export class DrawEngine {
    */
   get_shared_buffer(): SharedArrayBuffer;
   /**
+   * 現在のダーティリージョンを取得してクリア (WASM API)
+   */
+  get_and_clear_dirty_regions(): Array<any>;
+  /**
    * 描画を実行してSharedArrayBufferに書き込み
    */
   render(): void;
+  /**
+   * 部分的に描画を実行（ダーティリージョンのみ）
+   */
+  render_dirty_regions(): void;
 }
 export class DrawingContext {
   private constructor();
@@ -96,6 +104,44 @@ export class SharedBuffer {
   constructor(size: number);
   write_pixels(offset: number, pixels: Uint8Array): void;
   readonly buffer: SharedArrayBuffer;
+}
+/**
+ * WebGPU-accelerated drawing engine with SharedArrayBuffer support
+ */
+export class WebGPUDrawEngine {
+  free(): void;
+  /**
+   * Create a new WebGPU-accelerated drawing engine
+   */
+  constructor(canvas_width: number, canvas_height: number);
+  /**
+   * Begin a new stroke
+   */
+  begin_stroke(x: number, y: number, pressure: number, r: number, g: number, b: number, a: number, brush_type: number, size: number): number;
+  /**
+   * Add a point to the active stroke
+   */
+  add_point(x: number, y: number, pressure: number): void;
+  /**
+   * End the current stroke
+   */
+  end_stroke(): void;
+  /**
+   * Clear the canvas
+   */
+  clear(): void;
+  /**
+   * Render the current state to the SharedArrayBuffer
+   */
+  render(): void;
+  /**
+   * Resize the canvas
+   */
+  resize(width: number, height: number): void;
+  /**
+   * Get the SharedArrayBuffer
+   */
+  readonly shared_buffer: SharedArrayBuffer;
 }
 export class WebGPURenderer {
   private constructor();
@@ -130,7 +176,18 @@ export interface InitOutput {
   readonly drawengine_undo: (a: number, b: number) => void;
   readonly drawengine_redo: (a: number, b: number) => void;
   readonly drawengine_get_shared_buffer: (a: number) => number;
+  readonly drawengine_get_and_clear_dirty_regions: (a: number, b: number) => void;
   readonly drawengine_render: (a: number, b: number) => void;
+  readonly drawengine_render_dirty_regions: (a: number, b: number) => void;
+  readonly __wbg_webgpudrawengine_free: (a: number, b: number) => void;
+  readonly webgpudrawengine_new: (a: number, b: number) => number;
+  readonly webgpudrawengine_shared_buffer: (a: number) => number;
+  readonly webgpudrawengine_begin_stroke: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number) => void;
+  readonly webgpudrawengine_add_point: (a: number, b: number, c: number, d: number, e: number) => void;
+  readonly webgpudrawengine_end_stroke: (a: number, b: number) => void;
+  readonly webgpudrawengine_clear: (a: number, b: number) => void;
+  readonly webgpudrawengine_render: (a: number, b: number) => void;
+  readonly webgpudrawengine_resize: (a: number, b: number, c: number, d: number) => void;
   readonly __wbg_webgpurenderer_free: (a: number, b: number) => void;
   readonly webgpurenderer_new: (a: number) => number;
   readonly webgpurenderer_render: (a: number, b: number) => void;

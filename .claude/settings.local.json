@@ -47,7 +47,8 @@
       "Bash(mv:*)",
       "Bash(mkdir:*)",
       "Bash(sed:*)",
-      "WebFetch(domain:github.com)"
+      "WebFetch(domain:github.com)",
+      "Bash(touch:*)"
     ],
     "deny": []
   }

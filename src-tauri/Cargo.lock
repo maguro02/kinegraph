@@ -2533,6 +2533,7 @@ dependencies = [
  "image",
  "log",
  "lz4",
+ "once_cell",
  "roxmltree",
  "serde",
  "serde_json",

@@ -20,6 +20,7 @@ export default defineConfig(async () => ({
     // Worker設定
     worker: {
         format: 'es' as const,
+        plugins: () => [],
     },
     
     // public directoryの設定
@@ -95,6 +96,7 @@ export default defineConfig(async () => ({
         headers: {
             'Cross-Origin-Embedder-Policy': 'require-corp',
             'Cross-Origin-Opener-Policy': 'same-origin',
+            'Cross-Origin-Resource-Policy': 'same-origin',
         },
         // WASMファイルの配信設定
     },

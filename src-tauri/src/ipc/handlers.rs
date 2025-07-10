@@ -86,3 +86,29 @@ pub async fn get_compressed_render_result(
         timestamp: chrono::Utc::now().timestamp_millis() as u64,
     })
 }
+
+#[command]
+#[cfg_attr(feature = "specta", specta::specta)]
+pub async fn render_active_stroke(
+    canvas_id: String,
+    engine: State<'_, Arc<DrawingEngine>>,
+) -> Result<(), String> {
+    let id = Uuid::parse_str(&canvas_id)
+        .map_err(|e| format!("Invalid canvas ID: {}", e))?;
+    let canvas_id = CanvasId(id);
+    
+    engine.render_active_stroke(&canvas_id).await
+}
+
+#[command]
+#[cfg_attr(feature = "specta", specta::specta)]
+pub async fn clear_stroke_cache(
+    canvas_id: String,
+    engine: State<'_, Arc<DrawingEngine>>,
+) -> Result<(), String> {
+    let id = Uuid::parse_str(&canvas_id)
+        .map_err(|e| format!("Invalid canvas ID: {}", e))?;
+    let canvas_id = CanvasId(id);
+    
+    engine.clear_stroke_cache(&canvas_id).await
+}
