@@ -27,7 +27,7 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2.3.0", features = [] }
 
 [dependencies]
-tauri = { version = "2.6.2", features = [] }
+tauri = { version = "2.6.2", features = ['devtools'] }
 tauri-plugin-opener = "2.4.0"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
@@ -52,7 +52,10 @@ uuid = { version = "1.11", features = ["v4", "serde"] }
 flume = "0.11"
 # 型安全なRust-TypeScript連携用
 specta = { version = "=2.0.0-rc.20", optional = true }
-tauri-specta = { version = "=2.0.0-rc.20", features = ["derive", "typescript"], optional = true }
+tauri-specta = { version = "=2.0.0-rc.20", features = [
+  "derive",
+  "typescript",
+], optional = true }
 specta-typescript = { version = "0.0.7", optional = true }
 # GPU描画エンジン用
 wgpu = { version = "0.20", features = ["webgl"] }

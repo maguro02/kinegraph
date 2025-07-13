@@ -51,9 +51,12 @@
 - @tailwindcss/vite 4.1.11 (最新Vite統合)
 - jotai 2.12.5 (状態管理)
 - @tauri-apps/api 2.6.0 (Tauri API)
-- vitest 2.1.9 (テストランナー)
-- @testing-library/react 16.1.0 (テストライブラリ)
-- jsdom 26.0.3 (DOM環境)
+- @webgpu/types 0.1.63 (WebGPU型定義)
+- vite-plugin-wasm 3.4.1 (WASM統合)
+- vite-plugin-top-level-await 1.5.0 (トップレベルawaitサポート)
+- vitest 2.1.8 (テストランナー)
+- @testing-library/react 16.2.0 (テストライブラリ)
+- jsdom 25.0.0 (DOM環境)
 - @heroicons/react 2.2.0 (UIアイコン)
 
 ## 基本仕様
@@ -128,14 +131,20 @@
 - コードベースの変更を行った際は最終ステップで必ずTypeScriptのビルドチェックを行ってください
 
 ### コマンド
-- 型定義の生成コマンド: cargo run --bin generate-bindings --features specta
+- 型定義の生成コマンド: `cargo run --bin generate-bindings --features specta`
+- WASMビルド: `cd src-wasm && wasm-pack build --target web --no-opt --out-dir ../public/wasm`
+- Tauriビルド: `cargo tauri build`
+- 開発モード: `cargo tauri dev`
 
 ## アーキテクチャ
 
 ### 描画エンジン
-現在の実装では、TauriのRustプロセスでwgpuを使用した描画エンジンが動作しています。パフォーマンス向上のため、JSON形式に加えてバイナリプロトコルによる高速通信も実装されています。
+複数の描画エンジン実装により、様々な環境とパフォーマンス要求に対応しています。
 
-#### ディレクトリ構造
+#### 1. Tauri IPC描画エンジン（メイン）
+TauriのRustプロセスでwgpuを使用した高性能描画エンジン。JSON形式に加えてバイナリプロトコルによる高速通信も実装されています。
+
+##### ディレクトリ構造
 ```
 src-tauri/src/
 ├── drawing_engine/      # 描画エンジンモジュール
@@ -157,7 +166,28 @@ src-tauri/src/
     └── image_stream.rs    # 画像ストリーミング
 ```
 
-#### 主要機能
+#### 2. WebGPU/WASM描画エンジン（高性能Web）
+Web Worker内で動作するWASM実装。SharedArrayBufferを使用したゼロコピー通信により、ネイティブに近いパフォーマンスを実現。
+
+##### ディレクトリ構造
+```
+src-wasm/src/
+├── lib.rs              # WASMモジュールエントリポイント
+├── draw_engine.rs      # メイン描画エンジン実装
+├── webgpu_engine.rs    # WebGPU統合（実装中）
+├── shaders.rs          # GPU シェーダー定義
+├── stamp.rs            # スタンプベース描画実装
+└── worker.rs           # Web Worker通信処理
+```
+
+##### 主要な最適化
+- **Wuアルゴリズム**: アンチエイリアス付き高品質ライン描画
+- **スタンプベース描画**: 事前計算されたブラシスタンプによる高速描画
+- **インクリメンタルレンダリング**: 新規ストローク部分のみを描画
+- **SharedArrayBuffer**: メインスレッドとWorker間のゼロコピー通信
+- **ダーティリージョン管理**: 変更領域のみの効率的な更新
+
+##### 主要機能（Tauri IPC）
 1. **ライン補間**: ブレゼンハムのアルゴリズムによる滑らかな線描画
 2. **ブレンドモード**: Normal、Multiply、Screen、Overlay
 3. **レイヤー合成**: 最大10レイヤーの効率的な合成
@@ -170,6 +200,8 @@ src-tauri/src/
 ### フロントエンド統合
 - **useDrawingEngine**: 描画エンジンとの通信を管理するReactフック（バイナリ通信対応）
 - **DrawingCanvas**: Tauri描画エンジンを使用するキャンバスコンポーネント
+- **WasmCanvas**: WASM描画エンジンを使用するキャンバスコンポーネント
+- **Canvas**: 描画エンジン切り替え対応の統合キャンバスコンポーネント
 - **LayerPanelDrawingEngine**: レイヤー管理UI
 - **DrawCommandBatcher**: 描画コマンドのバッチ処理クラス
 - **BinaryProtocol**: バイナリ通信プロトコルの実装
@@ -178,6 +210,36 @@ src-tauri/src/
 ### 描画エンジンの切り替え
 `drawingEngineAtom`の値により、以下のエンジンを切り替え可能：
 - `'tauri'`: Tauri IPC描画エンジン（デフォルト）
-- `'wasmWorker'`: Web Worker WASM実装
+- `'wasmWorker'`: Web Worker WASM実装（SharedArrayBuffer使用）
 - `'wasm'`: 直接WASM実装
 - `'canvas2d'`: Canvas 2D API
+
+### パフォーマンス最適化
+
+#### WASM描画エンジンの最適化
+1. **スタンプベース描画**
+   - 事前計算されたブラシスタンプを使用
+   - アルファマップによる高品質なブレンディング
+   - キャッシュによる再利用
+
+2. **インクリメンタルレンダリング**
+   - 新規ストローク部分のみを描画
+   - 既存ピクセルの保持
+   - 描画領域の最小化
+
+3. **SharedArrayBuffer活用**
+   - Web WorkerとメインスレッドでメモリをZero-Copy共有
+   - リアルタイム更新の低レイテンシ化
+   - メモリ使用量の削減
+
+4. **ダーティリージョン管理**
+   - 変更領域の追跡
+   - 部分的なCanvas更新
+   - 不要な再描画の防止
+
+### セキュリティとCORS設定
+SharedArrayBufferを使用するために、以下のHTTPヘッダー設定が必要：
+```
+Cross-Origin-Opener-Policy: same-origin
+Cross-Origin-Embedder-Policy: require-corp
+```
